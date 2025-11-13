@@ -78,6 +78,7 @@
 - [x] 3. Node.js 브릿지 서버 기본 구조 구축
 
 
+
   - Express.js 서버 설정 및 미들웨어 구성
   - _요구사항: 1.3, 5.1, 7.5_
 
@@ -103,16 +104,21 @@
   - 데이터베이스 헬퍼 함수 작성 (query, insert, update, delete)
   - _요구사항: 9.1_
 
-- [ ] 4. IPFS 통합 구현
+- [x] 4. IPFS 통합 구현
+
+
   - Pinata API를 사용하여 메타데이터와 이미지를 IPFS에 업로드
   - _요구사항: 2.2, 4.3, 4.6_
 
-- [ ] 4.1 IPFS Manager 클래스 작성
+
+- [x] 4.1 IPFS Manager 클래스 작성
+
   - Pinata API 클라이언트 설정
   - uploadMetadata() 함수 구현
   - uploadImage() 함수 구현
   - 재시도 로직 포함 (최대 3회)
   - _요구사항: 2.2, 6.2_
+
 
 - [ ] 4.2 메타데이터 생성 헬퍼 함수
   - ERC-721 표준 준수 JSON 생성
