@@ -1,0 +1,19 @@
+{
+  "network": "sepolia",
+  "chainId": "11155111",
+  "deployer": "0xa5ab6C8C0560d51Db844182e286a380916Eb1487",
+  "timestamp": "2025-11-13T05:53:03.854Z",
+  "contracts": {
+    "GameToken": {
+      "address": "0xb0d279Ed4eA4C1564b6b4d2D02CE16aEd64Bf8AA",
+      "name": "Game Token",
+      "symbol": "KQTP",
+      "totalSupply": "1000000.0"
+    },
+    "GameAssetNFT": {
+      "address": "0x3Db5276c83a7494E0177c525Ccf9781741A1dD67",
+      "name": "GameAsset",
+      "symbol": "GASSET"
+    }
+  }
+}
