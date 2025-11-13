@@ -9,7 +9,32 @@
 
 ## 🚀 빠른 시작
 
-### 1. MariaDB 설치 (Rocky Linux)
+### 방법 1: 자동 설치 스크립트 (권장)
+
+```bash
+# 저장소 클론
+git clone https://github.com/GGingGGang/blockchain-study-termproject.git
+cd blockchain-study-termproject/database
+
+# 실행 권한 부여
+chmod +x install-mariadb.sh
+
+# 자동 설치 실행 (root 권한 필요)
+sudo ./install-mariadb.sh
+
+# 또는 커스텀 root 비밀번호 지정
+sudo MYSQL_ROOT_PASSWORD=your_password ./install-mariadb.sh
+```
+
+스크립트가 자동으로 다음을 수행합니다:
+- MariaDB 설치
+- 서비스 시작 및 자동 시작 설정
+- 방화벽 설정
+- 기본 보안 설정 (root 비밀번호: `rootpassword123`)
+- 데이터베이스 및 스키마 생성
+- 샘플 데이터 삽입
+
+### 방법 2: 수동 설치
 
 ```bash
 # MariaDB 설치
@@ -23,7 +48,7 @@ sudo systemctl enable mariadb
 sudo mysql_secure_installation
 ```
 
-### 2. 데이터베이스 초기화
+### 2. 데이터베이스 초기화 (수동)
 
 ```bash
 # root 계정으로 MariaDB 접속

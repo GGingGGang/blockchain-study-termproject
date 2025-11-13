@@ -8,7 +8,9 @@
     "test": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
-    "node": "hardhat node"
+    "node": "hardhat node",
+    "server": "node server/index.js",
+    "server:dev": "nodemon server/index.js"
   },
   "keywords": [
     "blockchain",
@@ -25,6 +27,12 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.0",
-    "dotenv": "^16.3.1"
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "morgan": "^1.10.1",
+    "mysql2": "^3.15.3",
+    "web3": "^4.16.0"
   }
 }

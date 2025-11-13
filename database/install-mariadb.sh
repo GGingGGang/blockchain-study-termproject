@@ -81,59 +81,82 @@ else
     warning "firewalld가 설치되어 있지 않습니다. 방화벽 설정을 건너뜁니다."
 fi
 
-# 5. MariaDB 보안 설정
+# 5. MariaDB 기본 보안 설정
 echo ""
-echo "5. MariaDB 보안 설정..."
-echo "   다음 질문에 답변하세요:"
-echo "   - Set root password? [Y/n] Y"
-echo "   - Remove anonymous users? [Y/n] Y"
-echo "   - Disallow root login remotely? [Y/n] Y"
-echo "   - Remove test database? [Y/n] Y"
-echo "   - Reload privilege tables? [Y/n] Y"
-echo ""
-read -p "보안 설정을 진행하시겠습니까? (y/n): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    mysql_secure_installation
-    success "보안 설정 완료"
+echo "5. MariaDB 기본 보안 설정..."
+
+# 기본 root 비밀번호 설정 (비밀번호 없이 접속 가능한 경우)
+MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-rootpassword123}"
+
+# root 비밀번호 설정 및 기본 보안 설정 자동화
+mysql -u root <<-EOF
+    -- root 비밀번호 설정
+    ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+    
+    -- 익명 사용자 제거
+    DELETE FROM mysql.user WHERE User='';
+    
+    -- 원격 root 로그인 비활성화
+    DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+    
+    -- test 데이터베이스 제거
+    DROP DATABASE IF EXISTS test;
+    DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+    
+    -- 권한 테이블 새로고침
+    FLUSH PRIVILEGES;
+EOF
+
+if [ $? -eq 0 ]; then
+    success "기본 보안 설정 완료"
+    echo "   Root 비밀번호: ${MYSQL_ROOT_PASSWORD}"
+    echo "   (환경 변수 MYSQL_ROOT_PASSWORD로 변경 가능)"
 else
-    warning "보안 설정을 건너뛰었습니다. 나중에 'mysql_secure_installation' 명령으로 실행하세요."
+    warning "보안 설정 실패. 이미 root 비밀번호가 설정되어 있을 수 있습니다."
+    read -sp "기존 MariaDB root 비밀번호를 입력하세요 (없으면 Enter): " MYSQL_ROOT_PASSWORD
+    echo ""
+    if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
+        MYSQL_ROOT_PASSWORD="rootpassword123"
+    fi
 fi
 
 # 6. 데이터베이스 초기화
 echo ""
 echo "6. 데이터베이스 초기화..."
-read -p "데이터베이스를 초기화하시겠습니까? (y/n): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -sp "MariaDB root 비밀번호를 입력하세요: " ROOT_PASSWORD
-    echo ""
-    
-    # 스크립트 디렉토리 확인
-    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    
-    if [ -f "$SCRIPT_DIR/init.sql" ]; then
-        mysql -u root -p"$ROOT_PASSWORD" < "$SCRIPT_DIR/init.sql"
+
+# 스크립트 디렉토리 확인
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# 자동으로 데이터베이스 초기화 진행
+if [ -f "$SCRIPT_DIR/init.sql" ]; then
+    mysql -u root -p"${MYSQL_ROOT_PASSWORD}" < "$SCRIPT_DIR/init.sql" 2>/dev/null
+    if [ $? -eq 0 ]; then
         success "데이터베이스 초기화 완료"
-        
-        if [ -f "$SCRIPT_DIR/schema.sql" ]; then
-            mysql -u root -p"$ROOT_PASSWORD" < "$SCRIPT_DIR/schema.sql"
-            success "스키마 생성 완료"
-        fi
-        
-        if [ -f "$SCRIPT_DIR/seed.sql" ]; then
-            read -p "샘플 데이터를 삽입하시겠습니까? (y/n): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                mysql -u root -p"$ROOT_PASSWORD" < "$SCRIPT_DIR/seed.sql"
-                success "샘플 데이터 삽입 완료"
-            fi
-        fi
     else
-        warning "init.sql 파일을 찾을 수 없습니다. 수동으로 데이터베이스를 초기화하세요."
+        error "데이터베이스 초기화 실패"
+        exit 1
+    fi
+    
+    if [ -f "$SCRIPT_DIR/schema.sql" ]; then
+        mysql -u root -p"${MYSQL_ROOT_PASSWORD}" < "$SCRIPT_DIR/schema.sql" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            success "스키마 생성 완료"
+        else
+            error "스키마 생성 실패"
+            exit 1
+        fi
+    fi
+    
+    if [ -f "$SCRIPT_DIR/seed.sql" ]; then
+        mysql -u root -p"${MYSQL_ROOT_PASSWORD}" < "$SCRIPT_DIR/seed.sql" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            success "샘플 데이터 삽입 완료"
+        else
+            warning "샘플 데이터 삽입 실패 (선택사항)"
+        fi
     fi
 else
-    warning "데이터베이스 초기화를 건너뛰었습니다."
+    warning "init.sql 파일을 찾을 수 없습니다."
 fi
 
 # 7. 연결 테스트
