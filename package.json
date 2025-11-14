@@ -11,7 +11,8 @@
     "node": "hardhat node",
     "server": "node server/index.js",
     "server:dev": "nodemon server/index.js",
-    "test:ipfs": "node test-ipfs.js"
+    "test:ipfs": "node test-ipfs.js",
+    "test:blockchain": "node test-blockchain.js"
   },
   "keywords": [
     "blockchain",
