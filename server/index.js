@@ -45,7 +45,7 @@ app.get('/health', (req, res) => {
 // API 라우트
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/nft', require('./routes/nft'));
-// app.use('/api/marketplace', require('./routes/marketplace'));
+app.use('/api/marketplace', require('./routes/marketplace'));
 
 // ============================================================
 // 에러 핸들러
