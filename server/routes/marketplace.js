@@ -432,3 +432,397 @@ router.delete('/listings/:listingId', authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
+
+// ============================================================
+// NFT 구매 API
+// ============================================================
+
+/**
+ * POST /api/marketplace/purchase
+ * NFT 구매
+ */
+router.post('/purchase', authenticateToken, async (req, res) => {
+  try {
+    const { listingId, buyerAddress } = req.body;
+
+    if (!listingId || !buyerAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: listingId, buyerAddress'
+      });
+    }
+
+    // 구매자 확인
+    if (req.user.address !== buyerAddress.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Buyer address mismatch'
+      });
+    }
+
+    // 판매 정보 조회
+    const listing = await db.queryOne(
+      'SELECT * FROM marketplace_listings WHERE id = ? AND status = "active"',
+      [listingId]
+    );
+
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Listing not found or already sold'
+      });
+    }
+
+    // 자기 자신에게 구매 방지
+    if (listing.seller_address === buyerAddress.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot buy your own NFT'
+      });
+    }
+
+    console.log(`💰 NFT 구매 시작: Listing ${listingId}`);
+
+    // 토큰 잔액 확인
+    const balance = await blockchain.getTokenBalance(buyerAddress);
+    const balanceInEther = blockchain.web3.utils.fromWei(balance, 'ether');
+    
+    if (parseFloat(balanceInEther) < parseFloat(listing.price)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient token balance'
+      });
+    }
+
+    // NFT 소유권 이전
+    const transferResult = await blockchain.transferNFT(
+      listing.seller_address,
+      buyerAddress,
+      listing.token_id
+    );
+
+    // 토큰 결제 (구매자 → 판매자)
+    const paymentAmount = blockchain.web3.utils.toWei(listing.price.toString(), 'ether');
+    const paymentResult = await blockchain.transferTokens(
+      buyerAddress,
+      listing.seller_address,
+      paymentAmount
+    );
+
+    // 판매 상태 업데이트
+    await db.query(
+      `UPDATE marketplace_listings 
+       SET status = 'sold', buyer_address = ?, sold_at = NOW() 
+       WHERE id = ?`,
+      [buyerAddress.toLowerCase(), listingId]
+    );
+
+    // NFT 소유자 업데이트
+    await db.query(
+      'UPDATE nft_records SET owner_address = ? WHERE token_id = ?',
+      [buyerAddress.toLowerCase(), listing.token_id]
+    );
+
+    // 구매 내역 저장
+    await db.insert('purchase_history', {
+      listing_id: listingId,
+      token_id: listing.token_id,
+      seller_address: listing.seller_address,
+      buyer_address: buyerAddress.toLowerCase(),
+      price: listing.price,
+      purchase_type: 'p2p',
+      transfer_tx_hash: transferResult.transactionHash,
+      payment_tx_hash: paymentResult.transactionHash
+    });
+
+    console.log(`✅ NFT 구매 완료: TokenID ${listing.token_id}`);
+
+    res.json({
+      success: true,
+      txHash: transferResult.transactionHash,
+      paymentTxHash: paymentResult.transactionHash,
+      status: 'confirmed',
+      tokenId: listing.token_id
+    });
+
+  } catch (error) {
+    console.error('NFT 구매 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Purchase failed',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================
+// 서버 상점 API
+// ============================================================
+
+/**
+ * GET /api/marketplace/shop/items
+ * 서버 상점 아이템 목록
+ */
+router.get('/shop/items', authenticateToken, async (req, res) => {
+  try {
+    const items = await db.query(
+      `SELECT 
+        id, name, description, item_type, price, stock, 
+        image_url, rarity, summon_uses 
+       FROM server_shop 
+       WHERE active = TRUE AND stock > 0
+       ORDER BY price DESC`
+    );
+
+    res.json({
+      success: true,
+      items: items.map(item => ({
+        itemId: item.id,
+        name: item.name,
+        description: item.description,
+        itemType: item.item_type,
+        price: item.price,
+        stock: item.stock,
+        image: item.image_url,
+        rarity: item.rarity,
+        summonUses: item.summon_uses
+      }))
+    });
+
+  } catch (error) {
+    console.error('상점 아이템 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch shop items'
+    });
+  }
+});
+
+/**
+ * POST /api/marketplace/shop/purchase
+ * 서버 상점 아이템 구매
+ */
+router.post('/shop/purchase', authenticateToken, async (req, res) => {
+  try {
+    const { itemId, buyerAddress } = req.body;
+
+    if (!itemId || !buyerAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: itemId, buyerAddress'
+      });
+    }
+
+    // 구매자 확인
+    if (req.user.address !== buyerAddress.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Buyer address mismatch'
+      });
+    }
+
+    // 아이템 정보 조회
+    const item = await db.queryOne(
+      'SELECT * FROM server_shop WHERE id = ? AND active = TRUE',
+      [itemId]
+    );
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        error: 'Item not found'
+      });
+    }
+
+    if (item.stock <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Item out of stock'
+      });
+    }
+
+    console.log(`🛒 상점 아이템 구매: ${item.name}`);
+
+    // 토큰 잔액 확인
+    const balance = await blockchain.getTokenBalance(buyerAddress);
+    const balanceInEther = blockchain.web3.utils.fromWei(balance, 'ether');
+    
+    if (parseFloat(balanceInEther) < parseFloat(item.price)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient token balance'
+      });
+    }
+
+    // 토큰 결제 (구매자 → 서버 지갑)
+    const paymentAmount = blockchain.web3.utils.toWei(item.price.toString(), 'ether');
+    const serverWallet = process.env.SERVER_WALLET_ADDRESS;
+    const paymentResult = await blockchain.transferTokens(
+      buyerAddress,
+      serverWallet,
+      paymentAmount
+    );
+
+    // NFT 메타데이터 생성 및 IPFS 업로드
+    const IPFSManager = require('../services/IPFSManager');
+    const ipfs = new IPFSManager();
+    
+    // 간단한 SVG 이미지 생성 (실제로는 item.image_url 사용)
+    const itemImage = `
+      <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+        <rect width="200" height="200" fill="#E74C3C"/>
+        <text x="100" y="100" font-size="16" fill="white" text-anchor="middle" dominant-baseline="middle">
+          ${item.name}
+        </text>
+      </svg>
+    `;
+
+    const nftData = await ipfs.uploadNFT({
+      image: Buffer.from(itemImage),
+      name: item.name,
+      description: item.description,
+      attributes: [
+        { trait_type: 'Type', value: item.item_type },
+        { trait_type: 'Rarity', value: item.rarity },
+        { trait_type: 'Source', value: 'Server Shop' },
+        { trait_type: 'Summon Uses', value: item.summon_uses || 1 }
+      ],
+      gameData: {
+        item_id: item.id,
+        item_type: item.item_type,
+        summon_uses: item.summon_uses || 1
+      }
+    });
+
+    // NFT 민팅
+    const tokenId = await blockchain.generateTokenId();
+    const mintResult = await blockchain.mintNFT(
+      buyerAddress,
+      tokenId,
+      nftData.metadataURI
+    );
+
+    // 재고 감소
+    await db.query(
+      'UPDATE server_shop SET stock = stock - 1 WHERE id = ?',
+      [itemId]
+    );
+
+    // NFT 레코드 저장
+    await db.insert('nft_records', {
+      token_id: tokenId,
+      owner_address: buyerAddress.toLowerCase(),
+      ipfs_cid: nftData.metadataCID,
+      mint_tx_hash: mintResult.transactionHash,
+      status: 'active'
+    });
+
+    // 구매 내역 저장
+    await db.insert('purchase_history', {
+      item_id: itemId,
+      token_id: tokenId,
+      buyer_address: buyerAddress.toLowerCase(),
+      price: item.price,
+      purchase_type: 'server_shop',
+      payment_tx_hash: paymentResult.transactionHash,
+      mint_tx_hash: mintResult.transactionHash
+    });
+
+    console.log(`✅ 상점 구매 완료: TokenID ${tokenId}`);
+
+    res.json({
+      success: true,
+      tokenId: tokenId,
+      txHash: mintResult.transactionHash,
+      paymentTxHash: paymentResult.transactionHash,
+      status: 'confirmed',
+      metadata: nftData.metadataURI
+    });
+
+  } catch (error) {
+    console.error('상점 구매 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Shop purchase failed',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================
+// 거래 내역 API
+// ============================================================
+
+/**
+ * GET /api/marketplace/history/:address
+ * 거래 내역 조회
+ */
+router.get('/history/:address', authenticateToken, async (req, res) => {
+  try {
+    const { address } = req.params;
+    const { type = 'all', page = 1, limit = 20 } = req.query;
+
+    // 본인 확인
+    if (req.user.address !== address.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    let whereClause = '(buyer_address = ? OR seller_address = ?)';
+    const params = [address.toLowerCase(), address.toLowerCase()];
+
+    if (type === 'buy') {
+      whereClause = 'buyer_address = ?';
+      params.splice(1, 1);
+    } else if (type === 'sell') {
+      whereClause = 'seller_address = ?';
+      params.splice(1, 1);
+    }
+
+    const offset = (page - 1) * limit;
+    params.push(parseInt(limit), offset);
+
+    const history = await db.query(
+      `SELECT 
+        id, token_id, seller_address, buyer_address, 
+        price, purchase_type, purchased_at,
+        transfer_tx_hash, payment_tx_hash
+       FROM purchase_history
+       WHERE ${whereClause}
+       ORDER BY purchased_at DESC
+       LIMIT ? OFFSET ?`,
+      params
+    );
+
+    // 총 개수 조회
+    const [{ total }] = await db.query(
+      `SELECT COUNT(*) as total FROM purchase_history WHERE ${whereClause}`,
+      params.slice(0, -2)
+    );
+
+    res.json({
+      success: true,
+      history: history.map(h => ({
+        id: h.id,
+        type: h.buyer_address === address.toLowerCase() ? 'buy' : 'sell',
+        tokenId: h.token_id,
+        price: h.price,
+        counterparty: h.buyer_address === address.toLowerCase() ? h.seller_address : h.buyer_address,
+        timestamp: h.purchased_at,
+        txHash: h.transfer_tx_hash || h.payment_tx_hash,
+        purchaseType: h.purchase_type
+      })),
+      total: total,
+      page: parseInt(page)
+    });
+
+  } catch (error) {
+    console.error('거래 내역 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch history'
+    });
+  }
+});
