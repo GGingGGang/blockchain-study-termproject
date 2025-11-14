@@ -12,7 +12,8 @@
     "server": "node server/index.js",
     "server:dev": "nodemon server/index.js",
     "test:ipfs": "node test-ipfs.js",
-    "test:blockchain": "node test-blockchain.js"
+    "test:blockchain": "node test-blockchain.js",
+    "test:api": "node test-api.js"
   },
   "keywords": [
     "blockchain",
