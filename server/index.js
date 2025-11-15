@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const path = require('path');
 const db = require('./config/database');
 
 const app = express();
@@ -29,11 +30,14 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // 로깅
 app.use(morgan('combined'));
 
+// 정적 파일 서빙 (마켓플레이스 웹사이트)
+app.use(express.static(path.join(__dirname, '../marketplace')));
+
 // ============================================================
 // 라우트 설정
 // ============================================================
 
-// 헬스 체크ㅉ
+// 헬스 체크
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -80,7 +84,8 @@ app.listen(PORT, () => {
   console.log('============================================================');
   console.log(`📡 포트: ${PORT}`);
   console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 URL: http://localhost:${PORT}`);
+  console.log(`🔗 API URL: http://localhost:${PORT}`);
+  console.log(`🌐 웹 마켓플레이스: http://localhost:${PORT}/index.html`);
   console.log('============================================================');
   
   // 데이터베이스 연결 테스트

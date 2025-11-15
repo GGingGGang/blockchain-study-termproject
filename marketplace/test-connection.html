@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaMask 연결 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #4f46e5;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f3f4f6;
+        }
+        .success { background-color: #d1fae5; color: #065f46; }
+        .error { background-color: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <h1>MetaMask 연결 테스트</h1>
+    
+    <button id="testBtn">MetaMask 연결 테스트</button>
+    
+    <div id="status"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const testBtn = document.getElementById('testBtn');
+
+        function showStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : 'success';
+        }
+
+        testBtn.addEventListener('click', async () => {
+            try {
+                // 1. MetaMask 설치 확인
+                if (typeof window.ethereum === 'undefined') {
+                    showStatus('❌ MetaMask가 설치되어 있지 않습니다.', true);
+                    return;
+                }
+                showStatus('✅ MetaMask 감지됨');
+
+                // 2. 계정 요청
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                if (accounts.length === 0) {
+                    showStatus('❌ 계정을 가져올 수 없습니다.', true);
+                    return;
+                }
+
+                const address = accounts[0];
+                showStatus(`✅ 연결 성공!\n주소: ${address}`);
+
+                // 3. 네트워크 확인
+                const chainId = await window.ethereum.request({ 
+                    method: 'eth_chainId' 
+                });
+                
+                setTimeout(() => {
+                    showStatus(`✅ 연결 성공!\n주소: ${address}\n네트워크: ${chainId}`);
+                }, 1000);
+
+            } catch (error) {
+                console.error('연결 실패:', error);
+                showStatus(`❌ 연결 실패: ${error.message}`, true);
+            }
+        });
+    </script>
+</body>
+</html>

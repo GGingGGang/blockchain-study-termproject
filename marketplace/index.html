@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블록체인 게임 NFT 마켓플레이스</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>🎮 NFT 마켓플레이스</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="active">홈</a></li>
+                <li><a href="my-nfts.html">내 NFT</a></li>
+                <li><a href="market.html">마켓</a></li>
+                <li><a href="shop.html">서버 상점</a></li>
+                <li><a href="history.html">거래 내역</a></li>
+            </ul>
+            <div class="wallet-section">
+                <button id="connectWallet" class="btn btn-primary">지갑 연결</button>
+                <div id="walletInfo" class="wallet-info" style="display: none;">
+                    <span id="walletAddress"></span>
+                    <span id="tokenBalance"></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="container">
+        <section class="hero">
+            <h2>블록체인 게임 자산 거래소</h2>
+            <p>게임 내 아이템을 NFT로 거래하고, 특별한 아이템을 구매하세요</p>
+        </section>
+
+        <section class="featured-section">
+            <h3>최신 등록 NFT</h3>
+            <div id="featuredNFTs" class="nft-grid">
+                <!-- NFT 카드들이 동적으로 추가됩니다 -->
+            </div>
+        </section>
+
+        <section class="stats-section">
+            <div class="stat-card">
+                <h4>총 거래량</h4>
+                <p id="totalVolume">-</p>
+            </div>
+            <div class="stat-card">
+                <h4>활성 판매</h4>
+                <p id="activeListings">-</p>
+            </div>
+            <div class="stat-card">
+                <h4>총 NFT</h4>
+                <p id="totalNFTs">-</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+        <div class="container">
+            <p>블록체인 게임 NFT 마켓플레이스. All rights reserved.</p>
+            <p>Powered by Ethereum Sepolia Testnet</p>
+        </div>
+    </footer>
+
+    <!-- 외부 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    
+    <!-- 내부 스크립트 -->
+    <script src="js/config.js"></script>
+    <script src="js/metamask.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/web3-helper.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/index.js"></script>
+</body>
+</html>

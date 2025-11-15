@@ -17,7 +17,7 @@ USE blockchain_game;
 -- NFT 레코드 테이블
 CREATE TABLE IF NOT EXISTS nft_records (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  token_id INT UNIQUE NOT NULL,
+  token_id BIGINT UNIQUE NOT NULL,
   owner_address VARCHAR(42) NOT NULL,
   ipfs_cid VARCHAR(100) NOT NULL,
   mint_tx_hash VARCHAR(66) NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS transaction_log (
   id INT AUTO_INCREMENT PRIMARY KEY,
   tx_hash VARCHAR(66) UNIQUE NOT NULL,
   tx_type ENUM('mint', 'burn', 'transfer', 'payment') NOT NULL,
-  token_id INT,
+  token_id BIGINT,
   from_address VARCHAR(42),
   to_address VARCHAR(42),
   status ENUM('pending', 'confirmed', 'failed') NOT NULL,
@@ -73,7 +73,7 @@ COMMENT='사용자 인증 세션 관리';
 -- 마켓플레이스 판매 목록 테이블
 CREATE TABLE IF NOT EXISTS marketplace_listings (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  token_id INT UNIQUE NOT NULL,
+  token_id BIGINT UNIQUE NOT NULL,
   seller_address VARCHAR(42) NOT NULL,
   buyer_address VARCHAR(42),
   price DECIMAL(20, 8) NOT NULL,
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS purchase_history (
   id INT AUTO_INCREMENT PRIMARY KEY,
   listing_id INT,
   item_id INT,
-  token_id INT NOT NULL,
+  token_id BIGINT NOT NULL,
   seller_address VARCHAR(42),
   buyer_address VARCHAR(42) NOT NULL,
   price DECIMAL(20, 8) NOT NULL,
