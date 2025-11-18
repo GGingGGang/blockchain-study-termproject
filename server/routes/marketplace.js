@@ -184,13 +184,28 @@ router.post('/auth/verify', async (req, res) => {
 router.get('/nfts/:address', authenticateToken, async (req, res) => {
   try {
     const { address } = req.params;
+    const { sync = 'false' } = req.query; // 동기화 옵션
 
-    // 본인 확인
-    if (req.user.address !== address.toLowerCase()) {
+    // 본인 확인 (대소문자 무시)
+    if (req.user.address.toLowerCase() !== address.toLowerCase()) {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
+    }
+
+    // 자동 블록체인 동기화 (5분 쿨다운)
+    let syncResult = null;
+    if (sync === 'true' && global.nftSyncService) {
+      try {
+        syncResult = await global.nftSyncService.syncAddress(address);
+        
+        if (syncResult.cooldown) {
+          console.log(`⏳ 동기화 쿨다운: ${address} (${syncResult.remainingSeconds}초 남음)`);
+        }
+      } catch (error) {
+        console.error('동기화 오류 (계속 진행):', error.message);
+      }
     }
 
     // NFT 목록 조회
@@ -217,6 +232,7 @@ router.get('/nfts/:address', authenticateToken, async (req, res) => {
       ipfsCID: nft.ipfs_cid,
       createdAt: nft.created_at,
       isListed: !!nft.listing_id,
+      listingId: nft.listing_id,
       listingPrice: nft.listing_price,
       metadataURL: `https://gateway.pinata.cloud/ipfs/${nft.ipfs_cid}`
     }));
@@ -224,7 +240,8 @@ router.get('/nfts/:address', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       nfts: nftsWithMetadata,
-      count: nfts.length
+      count: nfts.length,
+      syncResult: syncResult // 동기화 결과 포함
     });
 
   } catch (error) {
@@ -333,13 +350,57 @@ router.post('/listings', authenticateToken, async (req, res) => {
       });
     }
 
-    // 소유권 검증
-    const isOwner = await blockchain.verifyOwnership(tokenId, req.user.address);
+    // 블록체인에서 실제 소유권 검증
+    console.log(`🔍 소유권 검증 시작:`, {
+      tokenId,
+      requestAddress: req.user.address
+    });
+    
+    let actualOwner;
+    try {
+      actualOwner = await blockchain.getOwner(tokenId);
+      console.log(`📋 블록체인 소유자: ${actualOwner}`);
+    } catch (error) {
+      console.log(`❌ 토큰 조회 실패:`, error.message);
+      return res.status(404).json({
+        success: false,
+        error: 'NFT does not exist or has been burned'
+      });
+    }
+    
+    const isOwner = actualOwner.toLowerCase() === req.user.address.toLowerCase();
+    console.log(`🔍 소유권 검증 결과: ${isOwner ? '✅ 소유자' : '❌ 소유자 아님'}`);
+    
     if (!isOwner) {
+      console.log(`❌ 소유권 불일치:`, {
+        tokenId,
+        requestedBy: req.user.address,
+        actualOwner: actualOwner
+      });
+      
       return res.status(403).json({
         success: false,
-        error: 'Not the owner of this NFT'
+        error: 'Not the owner of this NFT',
+        details: {
+          yourAddress: req.user.address,
+          actualOwner: actualOwner
+        }
       });
+    }
+    
+    // DB 레코드 확인 및 업데이트
+    const dbRecord = await db.queryOne(
+      'SELECT * FROM nft_records WHERE token_id = ?',
+      [tokenId]
+    );
+    
+    if (dbRecord && dbRecord.owner_address.toLowerCase() !== actualOwner.toLowerCase()) {
+      console.log(`⚠️  DB 소유자 불일치 감지, 업데이트 중...`);
+      await db.query(
+        'UPDATE nft_records SET owner_address = ? WHERE token_id = ?',
+        [actualOwner.toLowerCase(), tokenId]
+      );
+      console.log(`✅ DB 소유자 업데이트 완료`);
     }
 
     // 중복 등록 확인
@@ -561,9 +622,9 @@ router.post('/purchase', authenticateToken, async (req, res) => {
 
 /**
  * GET /api/marketplace/shop/items
- * 서버 상점 아이템 목록
+ * 서버 상점 아이템 목록 (인증 불필요 - 누구나 볼 수 있음)
  */
-router.get('/shop/items', authenticateToken, async (req, res) => {
+router.get('/shop/items', async (req, res) => {
   try {
     const items = await db.query(
       `SELECT 
@@ -664,13 +725,18 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
 
     console.log(`✅ 토큰 잔액 확인 완료: ${balanceInEther} KQTP`);
     
-    // 주의: 실제 프로덕션에서는 사용자가 MetaMask로 직접 토큰을 전송해야 합니다.
-    // 현재는 테스트 목적으로 토큰 결제 없이 NFT만 발급합니다.
-    const paymentResult = {
-      transactionHash: '0x0000000000000000000000000000000000000000000000000000000000000000'
-    };
+    // 토큰 결제 (구매자 → 서버)
+    console.log(`💰 토큰 결제 시작: ${item.price} KQTP`);
+    const paymentAmount = blockchain.web3.utils.toWei(item.price.toString(), 'ether');
+    const serverWallet = process.env.SERVER_WALLET_ADDRESS;
     
-    console.log(`⚠️  토큰 결제 스킵 (테스트 모드)`);
+    const paymentResult = await blockchain.transferTokens(
+      buyerAddress,
+      serverWallet,
+      paymentAmount
+    );
+    
+    console.log(`✅ 토큰 결제 완료: ${paymentResult.transactionHash}`);
 
     // NFT 메타데이터 생성 및 IPFS 업로드
     const IPFSManager = require('../services/IPFSManager');
@@ -771,8 +837,8 @@ router.get('/history/:address', authenticateToken, async (req, res) => {
     const { address } = req.params;
     const { type = 'all', page = 1, limit = 20 } = req.query;
 
-    // 본인 확인
-    if (req.user.address !== address.toLowerCase()) {
+    // 본인 확인 (대소문자 무시)
+    if (req.user.address.toLowerCase() !== address.toLowerCase()) {
       return res.status(403).json({
         success: false,
         error: 'Access denied'

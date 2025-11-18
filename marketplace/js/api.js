@@ -18,10 +18,16 @@ class MarketplaceAPI {
      */
     getAuthHeaders() {
         const token = this.getSessionToken();
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
+        const headers = {
+            'Content-Type': 'application/json'
         };
+        
+        // 토큰이 있을 때만 Authorization 헤더 추가
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        return headers;
     }
 
     /**

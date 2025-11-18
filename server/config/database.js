@@ -115,6 +115,20 @@ async function transaction(callback) {
   }
 }
 
+/**
+ * 연결 풀 종료
+ * @returns {Promise<void>}
+ */
+async function close() {
+  try {
+    await pool.end();
+    console.log('Database connection pool closed');
+  } catch (error) {
+    console.error('Error closing database pool:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   pool,
   query,
@@ -122,5 +136,6 @@ module.exports = {
   insert,
   update,
   delete: deleteRecord,
-  transaction
+  transaction,
+  close
 };

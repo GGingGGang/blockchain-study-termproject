@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS nft_records (
   token_id BIGINT UNIQUE NOT NULL,
   owner_address VARCHAR(42) NOT NULL,
   ipfs_cid VARCHAR(100) NOT NULL,
-  mint_tx_hash VARCHAR(66) NOT NULL,
+  mint_tx_hash VARCHAR(66) NULL COMMENT '민팅 트랜잭션 해시 (동기화 시 NULL 가능)',
   burn_tx_hash VARCHAR(66),
   status ENUM('active', 'burned') DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

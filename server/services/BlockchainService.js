@@ -300,8 +300,175 @@ class BlockchainService {
    * @returns {Promise<number>} 토큰 ID
    */
   async generateTokenId() {
-    // 간단한 구현: 현재 타임스탬프 + 랜덤
-    return Date.now() + Math.floor(Math.random() * 1000);
+    const db = require('../config/database');
+    
+    try {
+      // 데이터베이스에서 가장 큰 Token ID 조회
+      const result = await db.queryOne(
+        'SELECT MAX(token_id) as max_id FROM nft_records'
+      );
+      
+      // 마지막 Token ID + 1, 없으면 1부터 시작
+      const nextId = result && result.max_id ? parseInt(result.max_id) + 1 : 1;
+      
+      console.log(`🔢 새 Token ID 생성: ${nextId}`);
+      return nextId;
+      
+    } catch (error) {
+      console.error('Token ID 생성 오류:', error);
+      // 오류 시 타임스탬프 기반으로 폴백 (기존 방식)
+      console.warn('⚠️  폴백: 타임스탬프 기반 Token ID 사용');
+      return Date.now() + Math.floor(Math.random() * 1000);
+    }
+  }
+
+  /**
+   * 블록체인에서 주소의 NFT를 스캔하여 DB와 동기화
+   * @param {string} address - 스캔할 주소
+   * @returns {Promise<Object>} 동기화 결과
+   */
+  async syncNFTsForAddress(address) {
+    const db = require('../config/database');
+    let syncedCount = 0;
+    let updatedCount = 0;
+    
+    try {
+      console.log(`🔄 NFT 동기화 시작: ${address}`);
+      
+      // 블록체인에서 NFT 개수 조회
+      const balance = await this.gameAssetNFTContract.methods.balanceOf(address).call();
+      
+      if (balance === '0') {
+        console.log(`ℹ️  NFT 없음: ${address}`);
+        return { synced: 0, updated: 0, total: 0 };
+      }
+      
+      // Transfer 이벤트로 Token ID 찾기 (컨트랙트 배포 블록부터)
+      const CONTRACT_DEPLOY_BLOCK = BigInt(process.env.CONTRACT_DEPLOY_BLOCK || 9619320);
+      const currentBlock = await this.web3.eth.getBlockNumber();
+      const CHUNK_SIZE = 10000n;
+      
+      console.log(`📦 블록 스캔: ${CONTRACT_DEPLOY_BLOCK} ~ ${currentBlock} (청크: ${CHUNK_SIZE})`);
+      
+      // 청크 단위로 이벤트 조회
+      const allEvents = [];
+      for (let from = CONTRACT_DEPLOY_BLOCK; from <= currentBlock; from += CHUNK_SIZE) {
+        const to = from + CHUNK_SIZE - 1n < currentBlock ? from + CHUNK_SIZE - 1n : currentBlock;
+        
+        try {
+          // 필터 없이 모든 Transfer 이벤트 조회
+          const events = await this.gameAssetNFTContract.getPastEvents('Transfer', {
+            fromBlock: from.toString(),
+            toBlock: to.toString()
+          });
+          
+          // 대상 주소와 관련된 이벤트만 필터링
+          const relevantEvents = events.filter(e => {
+            const { from, to } = e.returnValues;
+            return to.toLowerCase() === address.toLowerCase() || 
+                   from.toLowerCase() === address.toLowerCase();
+          });
+          
+          if (relevantEvents.length > 0) {
+            allEvents.push(...relevantEvents);
+          }
+        } catch (error) {
+          console.warn(`청크 스캔 실패 (${from}-${to}):`, error.message);
+        }
+      }
+      
+      const events = allEvents;
+      
+      const tokenIds = new Set(events.map(e => e.returnValues.tokenId));
+      
+      for (const tokenId of tokenIds) {
+        try {
+          // 현재 소유자 확인 (NFT가 소각되었을 수 있음)
+          let owner;
+          try {
+            owner = await this.gameAssetNFTContract.methods.ownerOf(tokenId).call();
+          } catch (ownerError) {
+            // NFT가 존재하지 않거나 소각됨
+            console.log(`Token ${tokenId}: 소각됨 또는 존재하지 않음`);
+            
+            // DB에 있다면 상태 업데이트
+            const dbRecord = await db.queryOne(
+              'SELECT * FROM nft_records WHERE token_id = ?',
+              [tokenId]
+            );
+            
+            if (dbRecord && dbRecord.status === 'active') {
+              await db.query(
+                'UPDATE nft_records SET status = ? WHERE token_id = ?',
+                ['burned', tokenId]
+              );
+              updatedCount++;
+            }
+            
+            continue;
+          }
+          
+          if (owner.toLowerCase() !== address.toLowerCase()) {
+            continue; // 다른 사람 소유
+          }
+          
+          // DB 확인
+          const dbRecord = await db.queryOne(
+            'SELECT * FROM nft_records WHERE token_id = ?',
+            [tokenId]
+          );
+          
+          if (dbRecord) {
+            // 소유자 업데이트
+            if (dbRecord.owner_address.toLowerCase() !== owner.toLowerCase()) {
+              await db.query(
+                'UPDATE nft_records SET owner_address = ?, status = ? WHERE token_id = ?',
+                [owner.toLowerCase(), 'active', tokenId]
+              );
+              updatedCount++;
+            }
+          } else {
+            // 새로 추가
+            let ipfsCID = null;
+            try {
+              const tokenURI = await this.gameAssetNFTContract.methods.tokenURI(tokenId).call();
+              if (tokenURI.includes('ipfs://')) {
+                ipfsCID = tokenURI.replace('ipfs://', '');
+              } else if (tokenURI.includes('/ipfs/')) {
+                ipfsCID = tokenURI.split('/ipfs/')[1];
+              }
+            } catch (e) {
+              console.warn(`메타데이터 조회 실패 (Token ${tokenId}):`, e.message);
+            }
+            
+            await db.insert('nft_records', {
+              token_id: tokenId,
+              owner_address: owner.toLowerCase(),
+              status: 'active',
+              ipfs_cid: ipfsCID,
+              mint_tx_hash: null,
+              created_at: new Date()
+            });
+            
+            syncedCount++;
+          }
+        } catch (error) {
+          console.error(`Token ${tokenId} 동기화 오류:`, error.message);
+        }
+      }
+      
+      console.log(`✅ 동기화 완료: 추가 ${syncedCount}개, 업데이트 ${updatedCount}개`);
+      
+      return {
+        synced: syncedCount,
+        updated: updatedCount,
+        total: tokenIds.size
+      };
+      
+    } catch (error) {
+      console.error('NFT 동기화 오류:', error);
+      throw error;
+    }
   }
 }
 

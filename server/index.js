@@ -90,7 +90,20 @@ app.listen(PORT, () => {
   
   // 데이터베이스 연결 테스트
   db.query('SELECT 1')
-    .then(() => console.log('✅ 데이터베이스 연결 성공'))
+    .then(() => {
+      console.log('✅ 데이터베이스 연결 성공');
+      
+      // NFT 동기화 서비스 초기화
+      const NFTSyncService = require('./services/NFTSyncService');
+      global.nftSyncService = new NFTSyncService();
+      
+      console.log('✅ NFT 동기화 서비스 준비 완료 (유저 요청 시 실행, 5분 쿨다운)');
+      
+      // 1시간마다 오래된 쿨다운 기록 정리
+      setInterval(() => {
+        global.nftSyncService.cleanupOldCooldowns();
+      }, 60 * 60 * 1000);
+    })
     .catch(err => console.error('❌ 데이터베이스 연결 실패:', err.message));
 });
 

@@ -153,12 +153,18 @@ class MarketplaceUI {
         const walletAddress = document.getElementById('walletAddress');
         const tokenBalance = document.getElementById('tokenBalance');
         const connectBtn = document.getElementById('connectWallet');
+        const addTokenBtn = document.getElementById('addTokenBtn');
 
         if (address && walletInfo && walletAddress && tokenBalance && connectBtn) {
             walletInfo.style.display = 'flex';
             connectBtn.style.display = 'none';
             walletAddress.textContent = Utils.shortenAddress(address);
             tokenBalance.textContent = `${parseFloat(balance).toFixed(2)} KQTP`;
+            
+            // KQTP 추가 버튼 표시
+            if (addTokenBtn) {
+                addTokenBtn.style.display = 'inline-block';
+            }
         }
     }
 

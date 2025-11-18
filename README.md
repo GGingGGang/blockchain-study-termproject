@@ -291,6 +291,43 @@ blockchain-study-termproject/
 3. NFT 자동 민팅
 4. 재고 관리
 
+## 💰 KQTP 토큰을 MetaMask에 추가하는 방법
+
+웹 마켓플레이스에서 KQTP 토큰 잔액을 확인하려면 MetaMask에 토큰을 추가해야 합니다.
+
+### 방법 1: 마켓플레이스에서 자동 추가 (권장)
+
+1. 웹 마켓플레이스 접속 (`http://localhost:3000`)
+2. MetaMask 지갑 연결
+3. 상단 네비게이션 바에서 **"KQTP 추가"** 버튼 클릭
+4. MetaMask 팝업에서 **"토큰 추가"** 확인
+
+### 방법 2: MetaMask에서 수동 추가
+
+1. MetaMask 확장 프로그램 열기
+2. **"토큰 가져오기"** 클릭
+3. **"맞춤형 토큰"** 탭 선택
+4. 다음 정보 입력:
+   - **토큰 컨트랙트 주소**: `0xb0d279Ed4eA4C1564b6b4d2D02CE16aEd64Bf8AA`
+   - **토큰 심볼**: `KQTP` (자동 입력됨)
+   - **토큰 소수 자릿수**: `18` (자동 입력됨)
+5. **"맞춤형 토큰 추가"** 클릭
+6. **"토큰 가져오기"** 확인
+
+### 토큰 정보
+- **이름**: Game Token
+- **심볼**: KQTP
+- **네트워크**: Sepolia Testnet
+- **컨트랙트 주소**: `0xb0d279Ed4eA4C1564b6b4d2D02CE16aEd64Bf8AA`
+- **소수점**: 18
+- **Etherscan**: [컨트랙트 보기](https://sepolia.etherscan.io/address/0xb0d279Ed4eA4C1564b6b4d2D02CE16aEd64Bf8AA)
+
+### 테스트 토큰 받기
+
+개발/테스트 목적으로 KQTP 토큰이 필요한 경우:
+1. Sepolia ETH를 먼저 받으세요: [Sepolia Faucet](https://sepoliafaucet.com/)
+2. 프로젝트 관리자에게 KQTP 토큰 전송 요청
+
 ## 📊 데이터베이스 스키마
 
 ### 주요 테이블

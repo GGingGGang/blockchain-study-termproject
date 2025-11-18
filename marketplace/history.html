@@ -23,6 +23,7 @@
             </ul>
             <div class="wallet-section">
                 <button id="connectWallet" class="btn btn-primary">지갑 연결</button>
+                <button id="addTokenBtn" class="btn btn-secondary" style="display: none;">KQTP 추가</button>
                 <div id="walletInfo" class="wallet-info" style="display: none;">
                     <span id="walletAddress"></span>
                     <span id="tokenBalance"></span>
@@ -89,6 +90,17 @@
     <script src="js/api.js"></script>
     <script src="js/web3-helper.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/add-token.js"></script>
     <script src="js/history.js"></script>
+    
+    <script>
+        // KQTP 토큰 추가 버튼 이벤트
+        document.addEventListener('DOMContentLoaded', () => {
+            const addTokenBtn = document.getElementById('addTokenBtn');
+            if (addTokenBtn) {
+                addTokenBtn.addEventListener('click', addKQTPToken);
+            }
+        });
+    </script>
 </body>
 </html>
