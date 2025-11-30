@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         NODE_VERSION = '18'
-        DEPLOY_SERVER = 'OCI_SERVER_IP'  // OCI 우분투 서버 IP (예: 132.145.xxx.xxx)
+        DEPLOY_SERVER = 'bridge'  // OCI 우분투 서버 IP (예: 132.145.xxx.xxx)
         DEPLOY_USER = 'ubuntu'  // OCI 기본 사용자
         DEPLOY_PATH = '/opt/blockchain-game'
         PM2_APP_NAME = 'blockchain-bridge'
