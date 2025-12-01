@@ -33,6 +33,9 @@ app.use(morgan('combined'));
 // 정적 파일 서빙 (마켓플레이스 웹사이트)
 app.use(express.static(path.join(__dirname, '../marketplace')));
 
+// 게임 정적 파일 서빙
+app.use('/game', express.static(path.join(__dirname, '../game')));
+
 // ============================================================
 // 라우트 설정
 // ============================================================
