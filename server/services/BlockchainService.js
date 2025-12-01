@@ -23,47 +23,73 @@ class BlockchainService {
   }
 
   /**
-   * NFT 민팅
-   * @param {string} toAddress - 수신자 주소
+   * NFT 민팅 (관리자 → 사용자 2단계 방식)
+   * @param {string} toAddress - 최종 수신자 주소
    * @param {number} tokenId - 토큰 ID
    * @param {string} tokenURI - IPFS 메타데이터 URI
    * @returns {Promise<Object>} 트랜잭션 영수증
    */
   async mintNFT(toAddress, tokenId, tokenURI) {
     try {
-      console.log(`🔨 NFT 민팅 시작: TokenID ${tokenId} → ${toAddress}`);
+      console.log(`🔨 NFT 민팅 시작 (2단계 방식)`);
+      console.log(`   1단계: 관리자로 민팅 (TokenID ${tokenId})`);
+      console.log(`   2단계: 관리자 → ${toAddress} 전송`);
       
-      // 트랜잭션 준비
-      const tx = this.gameAssetNFTContract.methods.mint(toAddress, tokenId, tokenURI);
+      // 1단계: 관리자 주소로 민팅
+      const mintTx = this.gameAssetNFTContract.methods.mint(
+        this.adminAccount.address,  // 관리자로 먼저 민팅
+        tokenId, 
+        tokenURI
+      );
       
-      // 가스 추정
-      const gas = await tx.estimateGas({ from: this.adminAccount.address });
+      const mintGas = await mintTx.estimateGas({ from: this.adminAccount.address });
       const gasPrice = await this.estimateGasPrice();
+      let nonce = await this.web3.eth.getTransactionCount(this.adminAccount.address, 'pending');
       
-      // nonce 가져오기
-      const nonce = await this.web3.eth.getTransactionCount(this.adminAccount.address, 'pending');
+      console.log(`   ⛽ 민팅 가스: ${mintGas}, 가스 가격: ${gasPrice}, nonce: ${nonce}`);
       
-      console.log(`⛽ 가스: ${gas}, 가스 가격: ${gasPrice}, nonce: ${nonce}`);
-      
-      // 트랜잭션 서명
-      const signedTx = await this.adminAccount.signTransaction({
+      const signedMintTx = await this.adminAccount.signTransaction({
         to: this.gameAssetNFTContract.options.address,
-        data: tx.encodeABI(),
-        gas: gas,
+        data: mintTx.encodeABI(),
+        gas: mintGas,
         gasPrice: gasPrice,
         nonce: nonce
       });
       
-      // 트랜잭션 전송
-      const receipt = await this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+      const mintReceipt = await this.web3.eth.sendSignedTransaction(signedMintTx.rawTransaction);
+      console.log(`   ✅ 1단계 완료: ${mintReceipt.transactionHash}`);
       
-      console.log(`✅ NFT 민팅 완료: ${receipt.transactionHash}`);
+      // 2단계: 관리자 → 사용자로 전송
+      const transferTx = this.gameAssetNFTContract.methods.transferFrom(
+        this.adminAccount.address,
+        toAddress,
+        tokenId
+      );
+      
+      const transferGas = await transferTx.estimateGas({ from: this.adminAccount.address });
+      nonce = await this.web3.eth.getTransactionCount(this.adminAccount.address, 'pending');
+      
+      console.log(`   ⛽ 전송 가스: ${transferGas}, nonce: ${nonce}`);
+      
+      const signedTransferTx = await this.adminAccount.signTransaction({
+        to: this.gameAssetNFTContract.options.address,
+        data: transferTx.encodeABI(),
+        gas: transferGas,
+        gasPrice: gasPrice,
+        nonce: nonce
+      });
+      
+      const transferReceipt = await this.web3.eth.sendSignedTransaction(signedTransferTx.rawTransaction);
+      console.log(`   ✅ 2단계 완료: ${transferReceipt.transactionHash}`);
+      
+      console.log(`✅ NFT 민팅 및 전송 완료`);
       
       return {
         success: true,
-        transactionHash: receipt.transactionHash,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString(),
+        mintTransactionHash: mintReceipt.transactionHash,
+        transferTransactionHash: transferReceipt.transactionHash,
+        blockNumber: transferReceipt.blockNumber,
+        gasUsed: (BigInt(mintReceipt.gasUsed) + BigInt(transferReceipt.gasUsed)).toString(),
         tokenId,
         toAddress,
         tokenURI
