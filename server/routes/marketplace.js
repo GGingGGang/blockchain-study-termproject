@@ -562,13 +562,9 @@ router.post('/purchase', authenticateToken, async (req, res) => {
       listing.token_id
     );
 
-    // 토큰 결제 (구매자 → 판매자)
-    const paymentAmount = blockchain.web3.utils.toWei(listing.price.toString(), 'ether');
-    const paymentResult = await blockchain.transferTokens(
-      buyerAddress,
-      listing.seller_address,
-      paymentAmount
-    );
+    // TODO: 토큰 결제는 프론트엔드에서 처리
+    // 사용자가 먼저 토큰을 판매자에게 전송한 후 이 API를 호출해야 함
+    console.log(`⚠️  토큰 결제는 프론트엔드에서 처리됨 (${listing.price} KQTP)`);
 
     // 판매 상태 업데이트
     await db.query(
@@ -593,7 +589,7 @@ router.post('/purchase', authenticateToken, async (req, res) => {
       price: listing.price,
       purchase_type: 'p2p',
       transfer_tx_hash: transferResult.transactionHash,
-      payment_tx_hash: paymentResult.transactionHash
+      payment_tx_hash: null // TODO: 프론트엔드에서 전송한 txHash 받아서 저장
     });
 
     console.log(`✅ NFT 구매 완료: TokenID ${listing.token_id}`);
@@ -601,7 +597,7 @@ router.post('/purchase', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       txHash: transferResult.transactionHash,
-      paymentTxHash: paymentResult.transactionHash,
+      paymentTxHash: null, // TODO: 프론트엔드에서 처리
       status: 'confirmed',
       tokenId: listing.token_id
     });
