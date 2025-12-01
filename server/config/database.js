@@ -53,8 +53,16 @@ async function queryOne(sql, params = []) {
  * @returns {Promise<number>} 삽입된 레코드의 ID
  */
 async function insert(table, data) {
-  const keys = Object.keys(data);
-  const values = Object.values(data);
+  // undefined 값 필터링 (null은 유지)
+  const filteredData = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      filteredData[key] = value;
+    }
+  }
+  
+  const keys = Object.keys(filteredData);
+  const values = Object.values(filteredData);
   const placeholders = keys.map(() => '?').join(', ');
   
   const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
