@@ -119,10 +119,12 @@ pipeline {
                             --exclude 'node_modules' \
                             --exclude '.git' \
                             --exclude 'test' \
-                            --exclude 'contracts' \
                             --exclude 'scripts' \
                             --exclude '.env' \
                             dist/ ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                        
+                        echo "📋 전송된 artifacts 확인..."
+                        ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "ls -la ${DEPLOY_PATH}/artifacts/ && ls -la ${DEPLOY_PATH}/artifacts/contracts/ || echo '⚠️  contracts 폴더 없음'"
                     '''
                     
                     // 3) 원격 서버에서 npm/pm2 실행
