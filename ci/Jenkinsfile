@@ -50,27 +50,31 @@ pipeline {
             }
         }
  
-        stage('Build') {
+        sstage('Build') {
             steps {
-                echo '🧱 Hardhat 컴파일 중...'
+                sh '''
+                    export PATH=/usr/bin:/usr/local/bin:$PATH
+
+                    echo "=== Node & NPM Info ==="
+                    node -v
+                    npm -v
+                    npx --version
+
+                    echo "=== Hardhat Compile ==="
+                    npx hardhat compile
+                '''
 
                 sh '''
-                    'npx hardhat compile'
-                '''
-                echo '🔨 빌드 준비...'
-                sh '''
-                    # 배포용 파일만 복사 (server + marketplace만)
                     mkdir -p dist
                     cp -r server dist/
                     cp -r marketplace dist/
                     cp package*.json dist/
                     cp .env.example dist/
                     cp -r artifacts dist/
-
                 '''
             }
         }
-        
+                
 
         stage('Debug ENV_FILE') {
             steps {
