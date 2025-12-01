@@ -95,18 +95,34 @@ async function preMintShopItems() {
           }
         });
 
-        // 3-3. NFT 민팅 (관리자 주소로)
+        // 3-3. NFT 민팅 (관리자 주소로) - BlockchainService 사용
         const tokenId = await blockchain.generateTokenId();
-        const mintResult = await blockchain.gameAssetNFTContract.methods
-          .mint(
-            process.env.SERVER_WALLET_ADDRESS,
-            tokenId,
-            nftData.metadataURI
-          )
-          .send({
-            from: blockchain.adminAccount.address,
-            gas: 500000
-          });
+        
+        // 관리자 주소로 직접 민팅 (2단계 방식 사용 안 함)
+        const tx = blockchain.gameAssetNFTContract.methods.mint(
+          process.env.SERVER_WALLET_ADDRESS,
+          tokenId,
+          nftData.metadataURI
+        );
+        
+        const gas = await tx.estimateGas({ from: blockchain.adminAccount.address });
+        const gasPrice = await blockchain.estimateGasPrice();
+        const nonce = await blockchain.web3.eth.getTransactionCount(
+          blockchain.adminAccount.address,
+          'pending'
+        );
+        
+        const signedTx = await blockchain.adminAccount.signTransaction({
+          to: blockchain.gameAssetNFTContract.options.address,
+          data: tx.encodeABI(),
+          gas: gas,
+          gasPrice: gasPrice,
+          nonce: nonce
+        });
+        
+        const mintResult = await blockchain.web3.eth.sendSignedTransaction(
+          signedTx.rawTransaction
+        );
 
         // 3-4. DB에 저장
         await db.insert('nft_records', {
