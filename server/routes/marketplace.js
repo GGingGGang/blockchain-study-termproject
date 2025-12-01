@@ -403,26 +403,41 @@ router.post('/listings', authenticateToken, async (req, res) => {
       console.log(`✅ DB 소유자 업데이트 완료`);
     }
 
-    // 중복 등록 확인
+    // 기존 등록 확인
     const existing = await db.queryOne(
-      'SELECT * FROM marketplace_listings WHERE token_id = ? AND status = "active"',
+      'SELECT * FROM marketplace_listings WHERE token_id = ?',
       [tokenId]
     );
 
+    let listingId;
+    
     if (existing) {
-      return res.status(400).json({
-        success: false,
-        error: 'NFT is already listed'
+      if (existing.status === 'active') {
+        return res.status(400).json({
+          success: false,
+          error: 'NFT is already listed'
+        });
+      }
+      
+      // 이전 레코드 재사용 (sold 또는 cancelled 상태)
+      await db.query(
+        `UPDATE marketplace_listings 
+         SET seller_address = ?, price = ?, status = 'active', 
+             buyer_address = NULL, listed_at = NOW(), sold_at = NULL, cancelled_at = NULL
+         WHERE id = ?`,
+        [req.user.address, price, existing.id]
+      );
+      listingId = existing.id;
+      console.log(`♻️  기존 레코드 재사용: Listing ${listingId}`);
+    } else {
+      // 새 판매 등록
+      listingId = await db.insert('marketplace_listings', {
+        token_id: tokenId,
+        seller_address: req.user.address,
+        price: price,
+        status: 'active'
       });
     }
-
-    // 판매 등록
-    const listingId = await db.insert('marketplace_listings', {
-      token_id: tokenId,
-      seller_address: req.user.address,
-      price: price,
-      status: 'active'
-    });
 
     console.log(`📋 판매 등록: TokenID ${tokenId}, 가격 ${price}`);
 
