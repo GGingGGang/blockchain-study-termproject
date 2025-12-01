@@ -111,7 +111,7 @@ pipeline {
                     // 3) 원격 서버에서 npm/pm2 실행
                     sh '''
                         echo "🛠 원격 서버 설정..."
-                        ssh ${DEPLOY_USER}@${DEPLOY_SERVER} << 'ENDSSH'
+                        ssh ${DEPLOY_USER}@${DEPLOY_SERVER} << ENDSSH
                             cd ${DEPLOY_PATH}
                             
                             echo "현재 디렉토리:"
