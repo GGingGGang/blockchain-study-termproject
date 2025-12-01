@@ -64,6 +64,24 @@ pipeline {
             }
         }
         
+
+        stage('Debug ENV_FILE') {
+            steps {
+                sshagent(['deploy-ssh-key']) { // 굳이 안 써도 되지만 일단 동일환경
+                    withCredentials([file(credentialsId: 'bridge-env-file', variable: 'ENV_FILE')]) {
+                        sh '''
+                            echo "ENV_FILE 경로: $ENV_FILE"
+                            ls -l "$ENV_FILE" || echo "ENV_FILE 파일이 존재하지 않습니다"
+
+                            # 원격으로 그냥 cat만 보내보기 (scp 대신)
+                            ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+                            scp "$ENV_FILE" ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/.env.debug
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('Deploy to Server') {
             steps {
                 echo '🚀 서버 배포 중...'
