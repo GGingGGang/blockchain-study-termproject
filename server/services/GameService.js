@@ -4,16 +4,23 @@
  */
 
 const db = require('../config/database');
+const BlockchainService = require('./BlockchainService');
+const IPFSManager = require('./IPFSManager');
+const { createGameItemMetadata } = require('../utils/metadataHelper');
 
 class GameService {
   constructor() {
-    // 드랍 확률 설정 (간단한 예시)
+    this.blockchainService = new BlockchainService();
+    this.ipfsManager = new IPFSManager();
+    
+    // 드랍 확률 설정
     this.dropRates = {
-      goblin: 0.3,      // 30%
-      orc: 0.25,        // 25%
-      dragon: 0.5,      // 50%
-      boss: 0.8,        // 80%
-      default: 0.2      // 20%
+      training_dummy: 0.5,  // 50% (테스트용)
+      goblin: 0.3,          // 30%
+      orc: 0.25,            // 25%
+      dragon: 0.5,          // 50%
+      boss: 0.8,            // 80%
+      default: 0.2          // 20%
     };
     
     // 아이템 등급별 확률
@@ -26,6 +33,7 @@ class GameService {
     
     // 몬스터별 드랍 아이템
     this.dropItems = {
+      training_dummy: ['Wooden Sword', 'Practice Shield', 'Training Manual'],
       goblin: ['Goblin Tooth', 'Rusty Dagger', 'Torn Cloth'],
       orc: ['Orc Tusk', 'Battle Axe', 'Iron Armor'],
       dragon: ['Dragon Scale', 'Fire Gem', 'Ancient Sword'],
@@ -52,13 +60,37 @@ class GameService {
         [address]
       );
       
-      // IPFS 메타데이터 파싱 (간단히 처리)
-      const items = nfts.map(nft => ({
-        tokenId: nft.tokenId,
-        name: `Item #${nft.tokenId}`,
-        grade: this.getRandomGrade(),
-        ipfsCid: nft.ipfsCid,
-        createdAt: nft.createdAt
+      // IPFS 메타데이터 파싱
+      const items = await Promise.all(nfts.map(async (nft) => {
+        try {
+          // IPFS에서 메타데이터 가져오기
+          const metadata = await this.ipfsManager.getMetadata(nft.ipfsCid);
+          
+          // Rarity 속성 찾기
+          const rarityAttr = metadata.attributes?.find(attr => 
+            attr.trait_type === 'Rarity' || attr.trait_type === 'Grade'
+          );
+          
+          return {
+            tokenId: nft.tokenId,
+            name: metadata.name || `Item #${nft.tokenId}`,
+            grade: rarityAttr?.value || 'Common',
+            ipfsCid: nft.ipfsCid,
+            image: metadata.image,
+            attributes: metadata.attributes || [],
+            createdAt: nft.createdAt
+          };
+        } catch (error) {
+          console.error(`메타데이터 파싱 실패 (Token #${nft.tokenId}):`, error);
+          // 메타데이터 로드 실패 시 기본값 반환
+          return {
+            tokenId: nft.tokenId,
+            name: `Item #${nft.tokenId}`,
+            grade: 'Common',
+            ipfsCid: nft.ipfsCid,
+            createdAt: nft.createdAt
+          };
+        }
       }));
       
       return items;
@@ -71,6 +103,7 @@ class GameService {
 
   /**
    * 몬스터 처치 이벤트 처리
+   * 드랍 시 바로 NFT 민팅
    */
   async handleMonsterKill(address, monsterType, monsterLevel, location) {
     try {
@@ -89,29 +122,72 @@ class GameService {
       const itemGrade = this.calculateItemGrade();
       const itemName = this.getDropItem(monsterType);
       
-      // drop_items 테이블에 기록
-      const result = await db.query(
-        `INSERT INTO drop_items 
-        (user_address, monster_type, monster_level, item_name, item_grade, status)
-        VALUES (?, ?, ?, ?, ?, 'pending')`,
-        [address, monsterType, monsterLevel, itemName, itemGrade]
-      );
+      console.log(`🎲 드랍 발생: ${itemName} (${itemGrade}) - ${monsterType} Lv.${monsterLevel}`);
       
-      const dropId = result.insertId;
-      
-      console.log(`드랍 성공: ${itemName} (${itemGrade}) - Drop #${dropId}`);
-      
-      return {
-        dropped: true,
-        item: {
-          dropId: dropId,
+      // NFT 민팅
+      try {
+        // 1. 메타데이터 생성
+        const metadata = createGameItemMetadata({
           name: itemName,
-          grade: itemGrade,
-          monsterType: monsterType,
-          monsterLevel: monsterLevel
-        },
-        message: `${itemName} dropped!`
-      };
+          description: `Dropped from ${monsterType} (Level ${monsterLevel})`,
+          imageCID: 'QmPlaceholder', // TODO: 실제 이미지 CID
+          rarity: itemGrade,
+          itemType: 'Drop',
+          itemId: `${monsterType}_${Date.now()}`
+        });
+        
+        // 2. IPFS에 메타데이터 업로드
+        const metadataCID = await this.ipfsManager.uploadJSON(metadata);
+        console.log(`📦 메타데이터 업로드 완료: ${metadataCID}`);
+        
+        // 3. NFT 민팅
+        const mintResult = await this.blockchainService.mintNFT(address, metadataCID);
+        console.log(`✅ NFT 민팅 완료: Token #${mintResult.tokenId}`);
+        
+        // 4. drop_items 테이블에 기록
+        await db.query(
+          `INSERT INTO drop_items 
+          (user_address, monster_type, monster_level, item_name, item_grade, status, minted_token_id)
+          VALUES (?, ?, ?, ?, ?, 'minted', ?)`,
+          [address, monsterType, monsterLevel, itemName, itemGrade, mintResult.tokenId]
+        );
+        
+        return {
+          dropped: true,
+          item: {
+            tokenId: mintResult.tokenId,
+            name: itemName,
+            grade: itemGrade,
+            monsterType: monsterType,
+            monsterLevel: monsterLevel,
+            ipfsCid: metadataCID
+          },
+          message: `${itemName} dropped and minted!`
+        };
+        
+      } catch (mintError) {
+        console.error('NFT 민팅 실패, drop_items에만 기록:', mintError);
+        
+        // 민팅 실패 시 pending 상태로 기록
+        const result = await db.query(
+          `INSERT INTO drop_items 
+          (user_address, monster_type, monster_level, item_name, item_grade, status)
+          VALUES (?, ?, ?, ?, ?, 'pending')`,
+          [address, monsterType, monsterLevel, itemName, itemGrade]
+        );
+        
+        return {
+          dropped: true,
+          item: {
+            dropId: result.insertId,
+            name: itemName,
+            grade: itemGrade,
+            monsterType: monsterType,
+            monsterLevel: monsterLevel
+          },
+          message: `${itemName} dropped! (Minting pending)`
+        };
+      }
       
     } catch (error) {
       console.error('몬스터 킬 처리 실패:', error);
@@ -250,13 +326,7 @@ class GameService {
     return 'Common';
   }
 
-  /**
-   * 랜덤 등급 반환 (인벤토리용)
-   */
-  getRandomGrade() {
-    const grades = ['Common', 'Rare', 'Epic', 'Legendary'];
-    return grades[Math.floor(Math.random() * grades.length)];
-  }
+
 
   /**
    * 몬스터별 드랍 아이템 선택

@@ -198,6 +198,34 @@ class IPFSManager {
   }
 
   /**
+   * IPFS에서 메타데이터 가져오기
+   * @param {string} cid - IPFS CID
+   * @returns {Promise<Object>} 메타데이터 객체
+   */
+  async getMetadata(cid) {
+    try {
+      const url = `${this.pinataGateway}/ipfs/${cid}`;
+      const response = await axios.get(url, {
+        timeout: 10000 // 10초 타임아웃
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error(`메타데이터 조회 실패 (${cid}):`, error.message);
+      throw new Error(`Failed to fetch metadata from IPFS: ${error.message}`);
+    }
+  }
+
+  /**
+   * JSON 업로드 (uploadMetadata의 별칭)
+   * @param {Object} json - JSON 객체
+   * @returns {Promise<string>} IPFS CID
+   */
+  async uploadJSON(json) {
+    return this.uploadMetadata(json);
+  }
+
+  /**
    * Pinata 연결 테스트
    * @returns {Promise<boolean>} 연결 성공 여부
    */
