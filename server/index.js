@@ -59,6 +59,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/nft', require('./routes/nft'));
 app.use('/api/marketplace', require('./routes/marketplace'));
+app.use('/api/game', require('./routes/game')); // 게임 클라이언트 전용 API
 
 // ============================================================
 // 에러 핸들러

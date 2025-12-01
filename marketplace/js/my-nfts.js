@@ -188,6 +188,17 @@ async function createListing(tokenId, price) {
         const approvalResponse = await api.checkApproval(currentAddress);
         
         if (!approvalResponse.isApproved) {
+            // ETH 잔액 확인
+            const ethBalance = await web3Helper.getETHBalance(currentAddress);
+            
+            if (parseFloat(ethBalance) < 0.001) {
+                Utils.showNotification(
+                    'Sepolia ETH가 부족합니다!\n\n승인 트랜잭션을 위해 최소 0.001 ETH가 필요합니다.\n\nFaucet에서 받으세요:\n• https://sepoliafaucet.com\n• https://faucet.quicknode.com/ethereum/sepolia',
+                    'error'
+                );
+                return;
+            }
+            
             // 승인이 안 되어 있으면 승인 요청
             Utils.showNotification(
                 '마켓플레이스가 NFT를 전송할 수 있도록 승인이 필요합니다.\nMetaMask에서 승인을 확인해주세요.',
@@ -197,8 +208,17 @@ async function createListing(tokenId, price) {
             try {
                 await web3Helper.setApprovalForAll(approvalResponse.operatorAddress, true);
             } catch (approvalError) {
+                console.error('승인 실패:', approvalError);
+                
                 if (approvalError.code === 4001) {
                     Utils.showNotification('승인이 취소되었습니다. 판매 등록을 위해서는 승인이 필요합니다.', 'warning');
+                } else if (approvalError.code === 'INSUFFICIENT_FUNDS') {
+                    Utils.showNotification(
+                        'Sepolia ETH가 부족합니다!\n\n가스비를 지불하기 위해 Sepolia ETH가 필요합니다.\nFaucet에서 받으세요: https://sepoliafaucet.com',
+                        'error'
+                    );
+                } else {
+                    Utils.showNotification('승인 실패: ' + approvalError.message, 'error');
                 }
                 return;
             }
