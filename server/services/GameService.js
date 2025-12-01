@@ -203,7 +203,15 @@ class GameService {
         // 큐에 추가하고 결과 대기
         const { mintResult, metadataCID } = await this.queueMint(mintTask);
         
-        // 5. drop_items 테이블에 기록
+        // 5. nft_records 테이블에 기록 (마켓플레이스용)
+        await db.query(
+          `INSERT INTO nft_records 
+          (token_id, owner_address, ipfs_cid, mint_tx_hash, status)
+          VALUES (?, ?, ?, ?, 'active')`,
+          [mintResult.tokenId, address.toLowerCase(), metadataCID, mintResult.mintTransactionHash]
+        );
+        
+        // 6. drop_items 테이블에도 기록 (게임 기록용)
         await db.query(
           `INSERT INTO drop_items 
           (user_address, monster_type, monster_level, item_name, item_grade, status, minted_token_id)
