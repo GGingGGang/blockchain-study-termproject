@@ -182,6 +182,29 @@ function showListingModal(nft) {
  */
 async function createListing(tokenId, price) {
     try {
+        // 1단계: 승인 상태 확인
+        Utils.showNotification('NFT 승인 상태 확인 중...', 'info');
+        
+        const approvalResponse = await api.checkApproval(currentAddress);
+        
+        if (!approvalResponse.isApproved) {
+            // 승인이 안 되어 있으면 승인 요청
+            Utils.showNotification(
+                '마켓플레이스가 NFT를 전송할 수 있도록 승인이 필요합니다.\nMetaMask에서 승인을 확인해주세요.',
+                'info'
+            );
+            
+            try {
+                await web3Helper.setApprovalForAll(approvalResponse.operatorAddress, true);
+            } catch (approvalError) {
+                if (approvalError.code === 4001) {
+                    Utils.showNotification('승인이 취소되었습니다. 판매 등록을 위해서는 승인이 필요합니다.', 'warning');
+                }
+                return;
+            }
+        }
+        
+        // 2단계: 판매 등록
         Utils.showNotification('판매 등록 중...', 'info');
 
         const response = await api.createListing(tokenId, parseFloat(price));

@@ -119,6 +119,13 @@ class MarketplaceAPI {
     }
 
     /**
+     * NFT 컨트랙트 승인 상태 확인
+     */
+    async checkApproval(address) {
+        return await this.request(`/api/marketplace/check-approval/${address}`);
+    }
+
+    /**
      * 판매 등록 취소
      */
     async cancelListing(listingId) {

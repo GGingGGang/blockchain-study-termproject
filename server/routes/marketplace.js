@@ -573,6 +573,45 @@ router.get('/listings', async (req, res) => {
 // ============================================================
 
 /**
+ * GET /api/marketplace/check-approval/:address
+ * NFT 컨트랙트 승인 상태 확인
+ */
+router.get('/check-approval/:address', authenticateToken, async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    // 본인 확인
+    if (req.user.address !== address.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+    
+    // 서버 지갑 주소
+    const serverWallet = process.env.SERVER_WALLET_ADDRESS;
+    
+    // isApprovedForAll 확인
+    const isApproved = await blockchain.gameAssetNFTContract.methods
+      .isApprovedForAll(address, serverWallet)
+      .call();
+    
+    res.json({
+      success: true,
+      isApproved: isApproved,
+      operatorAddress: serverWallet
+    });
+    
+  } catch (error) {
+    console.error('승인 상태 확인 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check approval status'
+    });
+  }
+});
+
+/**
  * POST /api/marketplace/listings
  * NFT 판매 등록
  */
