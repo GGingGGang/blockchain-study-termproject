@@ -50,7 +50,7 @@ pipeline {
             }
         }
  
-        sstage('Build') {
+        stage('Build') {
             steps {
                 sh '''
                     export PATH=/usr/bin:/usr/local/bin:$PATH
