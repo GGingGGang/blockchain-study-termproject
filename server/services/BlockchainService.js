@@ -194,27 +194,36 @@ class BlockchainService {
   }
 
   /**
-   * ERC-20 토큰 전송
-   * @param {string} fromAddress - 발신자 주소
+   * ERC-20 토큰 전송 (관리자 계정에서 대신 전송)
+   * @param {string} fromAddress - 송신자 주소 (transferFrom 사용)
    * @param {string} toAddress - 수신자 주소
    * @param {string} amount - 전송 금액 (wei 단위)
    * @returns {Promise<Object>} 트랜잭션 영수증
    */
   async transferTokens(fromAddress, toAddress, amount) {
     try {
-      console.log(`💰 토큰 전송: ${amount} KQTP (${fromAddress} → ${toAddress})`);
+      console.log(`💰 토큰 전송: ${this.web3.utils.fromWei(amount, 'ether')} KQTP (${fromAddress} → ${toAddress})`);
+      console.log(`🔑 실제 서명자: ${this.adminAccount.address}`);
       
-      // 관리자 계정으로 전송 (실제로는 사용자가 서명해야 함)
-      const tx = this.gameTokenContract.methods.transfer(toAddress, amount);
+      // transferFrom 사용 (관리자가 대신 전송)
+      const tx = this.gameTokenContract.methods.transferFrom(fromAddress, toAddress, amount);
       
+      // 가스 추정
       const gas = await tx.estimateGas({ from: this.adminAccount.address });
       const gasPrice = await this.estimateGasPrice();
       
+      // nonce 가져오기 (관리자 계정의 nonce)
+      const nonce = await this.web3.eth.getTransactionCount(this.adminAccount.address, 'pending');
+      
+      console.log(`⛽ 가스: ${gas}, 가스 가격: ${gasPrice}, nonce: ${nonce}`);
+      
+      // 트랜잭션 서명 및 전송
       const signedTx = await this.adminAccount.signTransaction({
         to: this.gameTokenContract.options.address,
         data: tx.encodeABI(),
         gas: gas,
-        gasPrice: gasPrice
+        gasPrice: gasPrice,
+        nonce: nonce
       });
       
       const receipt = await this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
