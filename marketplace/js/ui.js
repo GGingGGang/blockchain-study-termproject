@@ -18,6 +18,12 @@ class MarketplaceUI {
         if (options.showPrice && nft.price) {
             priceHTML = `<div class="nft-price">${nft.price} KQTP</div>`;
         }
+        
+        // 판매자 표시
+        let sellerHTML = '';
+        if (options.showSeller && nft.sellerDisplay) {
+            sellerHTML = `<div class="nft-seller">판매자: ${nft.sellerDisplay}</div>`;
+        }
 
         // 상태 표시
         let statusHTML = '';
@@ -54,6 +60,7 @@ class MarketplaceUI {
                 <div class="nft-card-footer">
                     <div>
                         ${priceHTML}
+                        ${sellerHTML}
                         <div class="nft-token-id">Token ID: ${nft.tokenId}</div>
                     </div>
                     ${statusHTML}

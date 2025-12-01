@@ -57,6 +57,16 @@ const Utils = {
         return `${address.slice(0, 6)}...${address.slice(-4)}`;
     },
     
+    // 닉네임과 주소 표시 (닉네임이 있으면 "닉네임 (0x1234...5678)", 없으면 "0x1234...5678")
+    formatUserDisplay(address, nickname) {
+        if (!address) return '';
+        const shortAddress = this.shortenAddress(address);
+        if (nickname) {
+            return `${nickname} (${shortAddress})`;
+        }
+        return shortAddress;
+    },
+    
     // IPFS URL 변환
     getIPFSUrl(cid) {
         if (!cid) return '';

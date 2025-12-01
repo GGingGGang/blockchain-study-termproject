@@ -125,9 +125,12 @@ async function loadMarketListings() {
                 attributes: listing.nftMetadata?.attributes || [],
                 price: listing.price,
                 seller: listing.seller,
+                sellerNickname: listing.sellerNickname,
+                sellerDisplay: Utils.formatUserDisplay(listing.seller, listing.sellerNickname),
                 listingId: listing.listingId
             })), {
                 showPrice: true,
+                showSeller: true,
                 actions: [{
                     name: 'buy',
                     label: '구매하기',
@@ -178,7 +181,7 @@ async function showPurchaseModal(nft) {
     `;
 
     // 정보 표시
-    sellerAddress.textContent = Utils.shortenAddress(nft.seller);
+    sellerAddress.textContent = nft.sellerDisplay || Utils.shortenAddress(nft.seller);
     purchasePrice.textContent = nft.price;
 
     // 내 잔액 조회

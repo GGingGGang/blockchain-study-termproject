@@ -523,9 +523,11 @@ router.get('/listings', async (req, res) => {
         ml.seller_address,
         ml.price,
         ml.listed_at,
-        nr.ipfs_cid
+        nr.ipfs_cid,
+        u.nickname AS seller_nickname
       FROM marketplace_listings ml
       INNER JOIN nft_records nr ON ml.token_id = nr.token_id
+      LEFT JOIN users u ON ml.seller_address = u.wallet_address
       WHERE ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ? OFFSET ?`,
@@ -547,6 +549,7 @@ router.get('/listings', async (req, res) => {
         listingId: l.listing_id,
         tokenId: l.token_id,
         seller: l.seller_address,
+        sellerNickname: l.seller_nickname,
         price: l.price,
         listedAt: l.listed_at,
         metadataURL: `https://gateway.pinata.cloud/ipfs/${l.ipfs_cid}`

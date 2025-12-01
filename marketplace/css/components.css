@@ -458,3 +458,15 @@
     font-weight: bold;
     margin-right: 0.5rem;
 }
+
+
+/* 판매자 정보 스타일 */
+.nft-seller {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.nft-seller::before {
+    content: '👤 ';
+}
