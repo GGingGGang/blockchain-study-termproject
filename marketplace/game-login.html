@@ -165,8 +165,17 @@
             <span id="btnText">MetaMask 연결</span>
         </button>
 
+        <div id="jwtBigDisplay" style="display: none; margin: 20px 0;">
+            <p style="font-size: 18px; font-weight: bold; color: #10b981; margin-bottom: 10px;">
+                ✅ 로그인 성공! 아래 토큰을 복사하세요:
+            </p>
+            <div style="background: #1e293b; padding: 20px; border-radius: 10px; word-break: break-all; font-family: monospace; font-size: 14px; color: #10b981; border: 3px solid #10b981;">
+                <span id="jwtTokenText"></span>
+            </div>
+        </div>
+
         <button id="copyJwtBtn" class="btn btn-secondary" style="display: none;">
-            JWT 복사
+            📋 JWT 복사
         </button>
 
         <p class="info-text">

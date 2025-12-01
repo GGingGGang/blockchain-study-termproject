@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Web Game MVP</title>
+    <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+    <header>
+        <span style="font-weight:700; font-size:13px;">🎮 Blockchain Game</span>
+        <input id="jwtInput" placeholder="JWT를 붙여넣으세요 (또는 로그인)" />
+        <button id="loginBtn" class="secondary">MetaMask 로그인</button>
+        <button id="saveJwtBtn">JWT 저장</button>
+        <button id="loadInvBtn" class="secondary" disabled>인벤토리</button>
+        <span id="addressDisplay" style="font-size:11px; color:#9ca3af;"></span>
+    </header>
+
+    <div id="main">
+        <div id="game-area">
+            <div id="monster">
+                <div id="monster-name">Training Dummy</div>
+                <div id="monster-hp-text">HP: 10 / 10</div>
+                <div id="hp-bar-bg">
+                    <div id="hp-bar"></div>
+                </div>
+                <small>클릭해서 공격</small>
+            </div>
+            <div id="floating-text">-1</div>
+        </div>
+
+        <div id="side-panel">
+            <div>
+                <strong>로그</strong>
+                <div id="log"></div>
+            </div>
+            <div>
+                <strong>인벤토리</strong>
+                <div id="inventory"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="../marketplace/js/config.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

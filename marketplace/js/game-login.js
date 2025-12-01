@@ -138,14 +138,16 @@ class GameLogin {
             const { sessionToken } = await verifyResponse.json();
             this.jwtToken = sessionToken;
             
-            // 7. JWT 표시
-            this.jwtDisplay.className = 'jwt-display';
-            this.jwtDisplay.textContent = `JWT: ${this.jwtToken}`;
-            this.jwtDisplay.style.display = 'block';
+            // 7. JWT 크게 표시
+            const jwtBigDisplay = document.getElementById('jwtBigDisplay');
+            const jwtTokenText = document.getElementById('jwtTokenText');
+            
+            jwtTokenText.textContent = this.jwtToken;
+            jwtBigDisplay.style.display = 'block';
             
             this.copyJwtBtn.style.display = 'block';
             
-            this.updateStatus('✅ 로그인 성공! JWT 토큰이 발급되었습니다.', 'success');
+            this.updateStatus('✅ 로그인 성공! 위의 JWT를 게임에 입력하세요.', 'success');
             this.connectBtn.style.display = 'none';
             
             // 8. UE5로 JWT 전달 (URL 파라미터 방식)
@@ -227,6 +229,19 @@ class GameLogin {
                 qrcode: true, // QR 코드 자동 표시
             });
             
+            // 이벤트 리스너 추가
+            provider.on("accountsChanged", (accounts) => {
+                console.log('계정 변경:', accounts);
+            });
+            
+            provider.on("chainChanged", (chainId) => {
+                console.log('체인 변경:', chainId);
+            });
+            
+            provider.on("disconnect", (code, reason) => {
+                console.log('연결 해제:', code, reason);
+            });
+            
             // 연결
             await provider.enable();
             
@@ -241,8 +256,14 @@ class GameLogin {
             this.addressDisplay.textContent = `연결된 주소: ${this.address}`;
             this.addressDisplay.style.display = 'block';
             
-            // 서명 진행
-            await this.proceedWithSignature();
+            // 서명 진행 (try-catch로 감싸기)
+            try {
+                await this.proceedWithSignature();
+            } catch (signError) {
+                console.error('서명 실패:', signError);
+                this.updateStatus('❌ 서명이 취소되었거나 실패했습니다.', 'error');
+                throw signError;
+            }
             
         } catch (error) {
             console.error('WalletConnect 연결 실패:', error);
