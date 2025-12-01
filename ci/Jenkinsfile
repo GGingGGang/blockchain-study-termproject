@@ -47,6 +47,23 @@ pipeline {
 
                     echo "=== Hardhat Compile ==="
                     npx hardhat compile
+                    
+                    echo "=== Verify Artifacts ==="
+                    ls -la artifacts/
+                    ls -la artifacts/contracts/ || echo "⚠️  contracts 폴더 없음"
+                    
+                    # 필수 컨트랙트 확인
+                    if [ ! -f "artifacts/contracts/GameToken.sol/GameToken.json" ]; then
+                        echo "❌ GameToken.json not found!"
+                        exit 1
+                    fi
+                    
+                    if [ ! -f "artifacts/contracts/GameAssetNFT.sol/GameAssetNFT.json" ]; then
+                        echo "❌ GameAssetNFT.json not found!"
+                        exit 1
+                    fi
+                    
+                    echo "✅ All contract artifacts found"
                 '''
 
                 sh '''
@@ -56,6 +73,10 @@ pipeline {
                     cp package*.json dist/
                     cp .env.example dist/
                     cp -r artifacts dist/
+                    
+                    echo "=== Dist Contents ==="
+                    ls -la dist/
+                    ls -la dist/artifacts/contracts/ || echo "⚠️  dist/artifacts/contracts 없음"
                 '''
             }
         }
