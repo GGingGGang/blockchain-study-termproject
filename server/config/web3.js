@@ -17,9 +17,15 @@ web3.eth.accounts.wallet.add(adminAccount);
 
 // 컨트랙트 ABI 로드
 function loadContractABI(contractName) {
-  const artifactPath = path.join(__dirname, '../../artifacts/contracts', `${contractName}.sol`, `${contractName}.json`);
+  // 프로젝트 루트에서 artifacts 찾기
+  const rootPath = path.join(__dirname, '../..');
+  const artifactPath = path.join(rootPath, 'artifacts/contracts', `${contractName}.sol`, `${contractName}.json`);
   
   if (!fs.existsSync(artifactPath)) {
+    console.error(`❌ Contract artifact not found: ${artifactPath}`);
+    console.error(`   Current directory: ${__dirname}`);
+    console.error(`   Root path: ${rootPath}`);
+    console.error(`   Looking for: artifacts/contracts/${contractName}.sol/${contractName}.json`);
     throw new Error(`Contract artifact not found: ${artifactPath}`);
   }
   
