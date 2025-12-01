@@ -394,14 +394,43 @@ class BlockchainService {
         data: request.data
       };
       
-      console.log(`   Formatted Request:`, formattedRequest);
+      console.log(`   Formatted Request:`, JSON.stringify(formattedRequest, null, 2));
       
-      // 서명 검증
+      // ethers.js로 서명 검증 (디버깅용)
+      const ethers = require('ethers');
+      const domain = {
+        name: 'MinimalForwarder',
+        version: '1.0.0',
+        chainId: 11155111, // Sepolia
+        verifyingContract: process.env.MINIMAL_FORWARDER_ADDRESS
+      };
+      
+      const types = {
+        ForwardRequest: [
+          { name: 'from', type: 'address' },
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'gas', type: 'uint256' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'data', type: 'bytes' }
+        ]
+      };
+      
+      try {
+        const recoveredAddress = ethers.verifyTypedData(domain, types, formattedRequest, signature);
+        console.log(`   🔍 복원된 서명자: ${recoveredAddress}`);
+        console.log(`   🔍 예상 서명자: ${request.from}`);
+        console.log(`   🔍 주소 일치: ${recoveredAddress.toLowerCase() === request.from.toLowerCase()}`);
+      } catch (ethersError) {
+        console.error(`   ❌ ethers.js 서명 검증 실패:`, ethersError.message);
+      }
+      
+      // 컨트랙트로 서명 검증
       const isValid = await this.minimalForwarderContract.methods
         .verify(formattedRequest, signature)
         .call();
       
-      console.log(`   서명 검증 결과: ${isValid}`);
+      console.log(`   📋 컨트랙트 서명 검증 결과: ${isValid}`);
       
       if (!isValid) {
         throw new Error('Invalid signature for meta-transaction');
