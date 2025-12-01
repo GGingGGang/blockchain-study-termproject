@@ -104,13 +104,66 @@ const Utils = {
     
     // 알림 표시
     showNotification(message, type = 'info') {
+        // 기존 알림 컨테이너 확인
+        let container = document.getElementById('notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                max-width: 400px;
+            `;
+            document.body.appendChild(container);
+        }
+        
         const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
+        notification.className = `notification notification-${type}`;
+        
+        // 아이콘 추가
+        const icons = {
+            success: '✓',
+            error: '✕',
+            warning: '⚠',
+            info: 'ℹ'
+        };
+        
+        notification.innerHTML = `
+            <span class="notification-icon">${icons[type] || 'ℹ'}</span>
+            <span class="notification-message">${message}</span>
+        `;
+        
+        notification.style.cssText = `
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease-out;
+            background-color: ${type === 'success' ? '#10b981' : 
+                              type === 'error' ? '#ef4444' : 
+                              type === 'warning' ? '#f59e0b' : '#6366f1'};
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+        `;
+        
+        container.appendChild(notification);
         
         setTimeout(() => {
-            notification.remove();
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => {
+                notification.remove();
+                if (container.children.length === 0) {
+                    container.remove();
+                }
+            }, 300);
         }, 5000);
     },
     
