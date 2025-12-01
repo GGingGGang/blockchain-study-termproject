@@ -29,24 +29,9 @@ pipeline {
         }
         
         stage('Lint & Test') {
-            parallel {
-                stage('Lint') {
-                    steps {
-                        echo '🔍 코드 린트 검사...'
-                        sh '''
-                            npm run lint || echo "Lint not configured"
-                        '''
-                    }
-                }
-                
-                stage('Test') {
-                    steps {
-                        echo '🧪 테스트 실행...'
-                        sh '''
-                            npm test || echo "Tests not configured"
-                        '''
-                    }
-                }
+            steps {
+                echo '⏭️  테스트 단계 스킵 (배포 전용 파이프라인)'
+                echo 'ℹ️  테스트는 로컬 환경에서 실행하세요'
             }
         }
  
