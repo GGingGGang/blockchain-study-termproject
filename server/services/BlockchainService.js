@@ -331,30 +331,36 @@ class BlockchainService {
   }
 
   /**
-   * 다음 사용 가능한 토큰 ID 생성
+   * 다음 사용 가능한 토큰 ID 생성 (랜덤 방식)
    * @returns {Promise<number>} 토큰 ID
    */
   async generateTokenId() {
-    const db = require('../config/database');
+    const maxAttempts = 10;
     
-    try {
-      // 데이터베이스에서 가장 큰 Token ID 조회
-      const result = await db.queryOne(
-        'SELECT MAX(token_id) as max_id FROM nft_records'
-      );
-      
-      // 마지막 Token ID + 1, 없으면 1부터 시작
-      const nextId = result && result.max_id ? parseInt(result.max_id) + 1 : 1;
-      
-      console.log(`🔢 새 Token ID 생성: ${nextId}`);
-      return nextId;
-      
-    } catch (error) {
-      console.error('Token ID 생성 오류:', error);
-      // 오류 시 타임스탬프 기반으로 폴백 (기존 방식)
-      console.warn('⚠️  폴백: 타임스탬프 기반 Token ID 사용');
-      return Date.now() + Math.floor(Math.random() * 1000);
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        // 랜덤 Token ID 생성 (1 ~ 999999999)
+        const tokenId = Math.floor(Math.random() * 999999999) + 1;
+        
+        // 블록체인에서 이미 존재하는지 확인
+        try {
+          await this.gameAssetNFTContract.methods.ownerOf(tokenId).call();
+          // 소유자가 있으면 이미 존재하는 Token ID
+          console.log(`⚠️  Token ID ${tokenId} 이미 존재, 재시도...`);
+          continue;
+        } catch (error) {
+          // ownerOf가 실패하면 존재하지 않는 Token ID (사용 가능)
+          console.log(`🔢 새 Token ID 생성: ${tokenId}`);
+          return tokenId;
+        }
+      } catch (error) {
+        console.error(`Token ID 생성 시도 ${attempt + 1} 실패:`, error.message);
+      }
     }
+    
+    // 모든 시도 실패 시 타임스탬프 기반 폴백
+    console.warn('⚠️  폴백: 타임스탬프 기반 Token ID 사용');
+    return Date.now() + Math.floor(Math.random() * 1000);
   }
 
   /**
