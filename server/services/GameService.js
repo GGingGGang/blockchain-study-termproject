@@ -13,6 +13,10 @@ class GameService {
     this.blockchainService = new BlockchainService();
     this.ipfsManager = new IPFSManager();
     
+    // 민팅 큐 (동시 민팅 방지)
+    this.mintQueue = [];
+    this.isMinting = false;
+    
     // 드랍 확률 설정
     this.dropRates = {
       training_dummy: 0.5,  // 50% (테스트용)
@@ -102,6 +106,48 @@ class GameService {
   }
 
   /**
+   * 민팅 큐 처리
+   */
+  async processMintQueue() {
+    if (this.isMinting || this.mintQueue.length === 0) {
+      return;
+    }
+    
+    this.isMinting = true;
+    
+    while (this.mintQueue.length > 0) {
+      const task = this.mintQueue.shift();
+      try {
+        const result = await task.execute();
+        task.resolve(result);
+      } catch (error) {
+        task.reject(error);
+      }
+      
+      // 트랜잭션 간 약간의 딜레이 (nonce 충돌 방지)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    this.isMinting = false;
+  }
+
+  /**
+   * 민팅 작업을 큐에 추가
+   */
+  async queueMint(mintTask) {
+    return new Promise((resolve, reject) => {
+      this.mintQueue.push({
+        execute: mintTask,
+        resolve,
+        reject
+      });
+      
+      // 큐 처리 시작
+      this.processMintQueue();
+    });
+  }
+
+  /**
    * 몬스터 처치 이벤트 처리
    * 드랍 시 바로 NFT 민팅
    */
@@ -124,30 +170,38 @@ class GameService {
       
       console.log(`🎲 드랍 발생: ${itemName} (${itemGrade}) - ${monsterType} Lv.${monsterLevel}`);
       
-      // NFT 민팅
+      // NFT 민팅 (큐에 추가)
       try {
-        // 1. 메타데이터 생성
-        const metadata = createGameItemMetadata({
-          name: itemName,
-          description: `Dropped from ${monsterType} (Level ${monsterLevel})`,
-          imageCID: 'QmPlaceholder', // TODO: 실제 이미지 CID
-          rarity: itemGrade,
-          itemType: 'Drop',
-          itemId: `${monsterType}_${Date.now()}`
-        });
+        // 민팅 작업 정의
+        const mintTask = async () => {
+          // 1. 메타데이터 생성
+          const metadata = createGameItemMetadata({
+            name: itemName,
+            description: `Dropped from ${monsterType} (Level ${monsterLevel})`,
+            imageCID: 'QmPlaceholder', // TODO: 실제 이미지 CID
+            rarity: itemGrade,
+            itemType: 'Drop',
+            itemId: `${monsterType}_${Date.now()}`
+          });
+          
+          // 2. IPFS에 메타데이터 업로드
+          const metadataCID = await this.ipfsManager.uploadJSON(metadata);
+          console.log(`📦 메타데이터 업로드 완료: ${metadataCID}`);
+          
+          // 3. Token ID 생성
+          const tokenId = await this.blockchainService.generateTokenId();
+          console.log(`🔢 Token ID 생성: ${tokenId}`);
+          
+          // 4. NFT 민팅
+          const tokenURI = `ipfs://${metadataCID}`;
+          const mintResult = await this.blockchainService.mintNFT(address, tokenId, tokenURI);
+          console.log(`✅ NFT 민팅 완료: Token #${mintResult.tokenId}`);
+          
+          return { mintResult, metadataCID };
+        };
         
-        // 2. IPFS에 메타데이터 업로드
-        const metadataCID = await this.ipfsManager.uploadJSON(metadata);
-        console.log(`📦 메타데이터 업로드 완료: ${metadataCID}`);
-        
-        // 3. Token ID 생성
-        const tokenId = await this.blockchainService.generateTokenId();
-        console.log(`🔢 Token ID 생성: ${tokenId}`);
-        
-        // 4. NFT 민팅
-        const tokenURI = `ipfs://${metadataCID}`;
-        const mintResult = await this.blockchainService.mintNFT(address, tokenId, tokenURI);
-        console.log(`✅ NFT 민팅 완료: Token #${mintResult.tokenId}`);
+        // 큐에 추가하고 결과 대기
+        const { mintResult, metadataCID } = await this.queueMint(mintTask);
         
         // 5. drop_items 테이블에 기록
         await db.query(
