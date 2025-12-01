@@ -405,6 +405,8 @@ class BlockchainService {
         verifyingContract: process.env.MINIMAL_FORWARDER_ADDRESS.toLowerCase()
       };
       
+      console.log(`   🔍 서버 검증용 domain:`, JSON.stringify(domain, null, 2));
+      
       const types = {
         ForwardRequest: [
           { name: 'from', type: 'address' },
