@@ -273,11 +273,17 @@ class BlockchainService {
       const gas = await tx.estimateGas({ from: this.adminAccount.address });
       const gasPrice = await this.estimateGasPrice();
       
+      // nonce 가져오기
+      const nonce = await this.web3.eth.getTransactionCount(this.adminAccount.address, 'pending');
+      
+      console.log(`⛽ 가스: ${gas}, 가스 가격: ${gasPrice}, nonce: ${nonce}`);
+      
       const signedTx = await this.adminAccount.signTransaction({
         to: this.gameAssetNFTContract.options.address,
         data: tx.encodeABI(),
         gas: gas,
-        gasPrice: gasPrice
+        gasPrice: gasPrice,
+        nonce: nonce
       });
       
       const receipt = await this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
