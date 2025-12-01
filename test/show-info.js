@@ -104,7 +104,7 @@ async function showInfo() {
     console.log(`총 거래 내역:   ${purchases.count}개`);
     
     const shopItems = await db.queryOne(
-      'SELECT COUNT(*) as count FROM server_shop WHERE available = TRUE'
+      'SELECT COUNT(*) as count FROM server_shop WHERE active = TRUE'
     );
     console.log(`상점 아이템:    ${shopItems.count}개`);
     
