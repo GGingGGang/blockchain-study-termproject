@@ -11,6 +11,7 @@ Unreal Engine 5 게임의 자산 시스템에 블록체인 기술을 통합하�
 - ✅ **P2P 마켓플레이스**: 플레이어 간 NFT 거래
 - ✅ **서버 상점**: 몬스터 소환권 등 특별 아이템 판매
 - ✅ **EIP-4361 인증**: Sign-In with Ethereum 표준 지갑 로그인
+- ✅ **EIP-2771 메타 트랜잭션**: 가스리스 트랜잭션 지원 (사용자는 서명만)
 - ✅ **IPFS 저장**: 분산 파일 시스템을 통한 메타데이터 저장
 
 ## 🏗️ 시스템 아키텍처
@@ -119,14 +120,19 @@ npm run server
 
 ### 배포된 컨트랙트 (Sepolia 테스트넷)
 
-- **GameToken (ERC-20)**: `0xb0d279Ed4eA4C1564b6b4d2D02CE16aEd64Bf8AA`
+- **MinimalForwarder (EIP-2771)**: `0xB8C14cA694f0212b94DACFFDD31344Ec1dAC66d6`
+  - 메타 트랜잭션 포워더 (가스리스 트랜잭션)
+
+- **GameToken (ERC-20)**: `0x7032C50EcD4ceE0d5127Ac3aF55e6200b5efC802`
   - 이름: Game Token
   - 심볼: KQTP
   - 초기 공급량: 1,000,000 KQTP
+  - 메타 트랜잭션 지원 ✓
 
-- **GameAssetNFT (ERC-721)**: `0x3Db5276c83a7494E0177c525Ccf9781741A1dD67`
+- **GameAssetNFT (ERC-721)**: `0x792CD029D3E6BF7312e7E5f5C84B83eAee9B0328`
   - 이름: GameAsset
   - 심볼: GASSET
+  - 메타 트랜잭션 지원 ✓
 
 ### 컨트랙트 재배포
 
@@ -277,19 +283,25 @@ blockchain-study-termproject/
 2. 스마트 컨트랙트 burn() 호출
 3. 데이터베이스 상태 업데이트
 
-### 3. P2P NFT 거래
+### 3. P2P NFT 거래 (메타 트랜잭션)
 플레이어 간 NFT 거래:
 1. 판매자가 NFT 판매 등록 (가격 설정)
-2. 구매자가 토큰으로 구매
-3. NFT 소유권 이전 + 토큰 결제
-4. 거래 내역 기록
+2. 구매자가 토큰 전송 메타 트랜잭션에 서명
+3. 서버가 메타 트랜잭션으로 토큰 결제 처리 (구매자 → 판매자)
+4. 서버가 NFT 소유권 이전 (판매자 → 구매자)
+5. 거래 내역 기록
 
-### 4. 서버 상점
+**장점**: 구매자는 가스비 없이 서명만으로 거래 가능
+
+### 4. 서버 상점 (메타 트랜잭션)
 서버가 판매하는 특별 아이템:
 1. 몬스터 소환권 등 아이템 구매
-2. 토큰 결제 (구매자 → 서버)
-3. NFT 자동 민팅
-4. 재고 관리
+2. 구매자가 토큰 전송 메타 트랜잭션에 서명
+3. 서버가 메타 트랜잭션으로 토큰 결제 처리 (구매자 → 서버)
+4. 서버가 NFT 자동 민팅 및 전송
+5. 재고 관리
+
+**장점**: 구매자는 가스비 없이 서명만으로 구매 가능
 
 ## 💰 KQTP 토큰을 MetaMask에 추가하는 방법
 
@@ -461,6 +473,62 @@ const response = await fetch('http://localhost:3000/api/nft/mint', {
 
 const { tokenId, txHash } = await response.json();
 ```
+
+### 메타 트랜잭션 NFT 구매 예시
+
+```javascript
+// 1. 메타 트랜잭션 준비 (서버에서 nonce 및 서명 데이터 받기)
+const prepareResponse = await fetch('http://localhost:3000/api/marketplace/meta-tx/prepare', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    fromAddress: buyerAddress,
+    toAddress: sellerAddress,
+    amount: price // KQTP 단위
+  })
+});
+
+const { request, domain, types, primaryType } = await prepareResponse.json();
+
+// 2. EIP-712 서명 요청 (MetaMask)
+const signature = await ethereum.request({
+  method: 'eth_signTypedData_v4',
+  params: [
+    buyerAddress,
+    JSON.stringify({
+      domain,
+      types,
+      primaryType,
+      message: request
+    })
+  ]
+});
+
+// 3. NFT 구매 요청 (서명 포함)
+const purchaseResponse = await fetch('http://localhost:3000/api/marketplace/purchase', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    listingId: listingId,
+    buyerAddress: buyerAddress,
+    paymentSignature: signature
+  })
+});
+
+const { paymentTxHash, transferTxHash, tokenId } = await purchaseResponse.json();
+console.log('구매 완료! 토큰 결제:', paymentTxHash, 'NFT 전송:', transferTxHash);
+```
+
+**메타 트랜잭션의 장점**:
+- 사용자는 ETH 가스비 불필요 (서명만 필요)
+- 서버가 가스비를 대납하여 트랜잭션 실행
+- 토큰 결제와 NFT 전송이 원자적으로 처리되어 안전
 
 ## 🛠️ 개발 도구
 

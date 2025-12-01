@@ -59,11 +59,40 @@ async function preMintShopItems() {
         continue;
       }
 
-      // 3. 필요한 만큼 NFT 민팅
+      // 3. 블록체인에서 최대 TokenID 찾기
+      let maxTokenId = 0;
+      
+      // DB에서 최대값 확인
+      try {
+        const dbMaxToken = await db.queryOne('SELECT MAX(token_id) as max_id FROM nft_records');
+        maxTokenId = dbMaxToken.max_id || 0;
+        console.log(`   📊 DB 최대 TokenID: ${maxTokenId}`);
+      } catch (error) {
+        console.log(`   ⚠️  DB 조회 실패`);
+      }
+      
+      // 블록체인에서도 확인 (더 큰 값 사용)
+      console.log(`   🔍 블록체인에서 실제 사용 중인 TokenID 확인 중...`);
+      for (let testId = maxTokenId + 1; testId <= maxTokenId + 100; testId++) {
+        try {
+          await blockchain.gameAssetNFTContract.methods.ownerOf(testId).call();
+          // 소유자가 있으면 존재하는 토큰
+          if (testId > maxTokenId) {
+            maxTokenId = testId;
+          }
+        } catch (error) {
+          // 소유자가 없으면 사용 가능 - 여기서 멈춤
+          break;
+        }
+      }
+      
+      console.log(`   ✅ 시작 TokenID: ${maxTokenId + 1}\n`);
+
+      // 4. 필요한 만큼 NFT 민팅
       for (let i = 0; i < needToMint; i++) {
         console.log(`   [${i + 1}/${needToMint}] 민팅 중...`);
 
-        // 3-1. 이미지 생성 (간단한 SVG)
+        // 4-1. 이미지 생성 (간단한 SVG)
         const itemImage = `
           <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
             <rect width="200" height="200" fill="#4A90E2"/>
@@ -95,8 +124,10 @@ async function preMintShopItems() {
           }
         });
 
-        // 3-3. NFT 민팅 (관리자 주소로) - BlockchainService 사용
-        const tokenId = await blockchain.generateTokenId();
+        // 4-3. TokenID 생성 (수동 증가)
+        maxTokenId++;
+        const tokenId = maxTokenId;
+        console.log(`      🔢 TokenID: ${tokenId}`);
         
         // 관리자 주소로 직접 민팅 (2단계 방식 사용 안 함)
         const tx = blockchain.gameAssetNFTContract.methods.mint(
@@ -124,7 +155,7 @@ async function preMintShopItems() {
           signedTx.rawTransaction
         );
 
-        // 3-4. DB에 저장
+        // 4-4. DB에 저장
         await db.insert('nft_records', {
           token_id: tokenId,
           owner_address: process.env.SERVER_WALLET_ADDRESS.toLowerCase(),

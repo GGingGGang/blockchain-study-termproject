@@ -18,6 +18,87 @@ const JWT_EXPIRES_IN = '24h';
 const blockchain = new BlockchainService();
 
 // ============================================================
+// 메타 트랜잭션 헬퍼 API
+// ============================================================
+
+/**
+ * POST /api/marketplace/meta-tx/prepare
+ * 메타 트랜잭션 준비 (nonce 및 서명 데이터 생성)
+ */
+router.post('/meta-tx/prepare', authenticateToken, async (req, res) => {
+  try {
+    const { fromAddress, toAddress, amount } = req.body;
+
+    if (!fromAddress || !toAddress || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: fromAddress, toAddress, amount'
+      });
+    }
+
+    // 본인 확인
+    if (req.user.address !== fromAddress.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Address mismatch'
+      });
+    }
+
+    // 현재 nonce 조회
+    const nonce = await blockchain.getMetaTxNonce(fromAddress);
+    
+    // transfer 함수 호출 데이터 생성
+    const amountInWei = blockchain.web3.utils.toWei(amount.toString(), 'ether');
+    const transferData = blockchain.gameTokenContract.methods.transfer(toAddress, amountInWei).encodeABI();
+    
+    // ForwardRequest 생성
+    const request = {
+      from: fromAddress,
+      to: blockchain.gameTokenContract.options.address,
+      value: '0',
+      gas: '100000',
+      nonce: nonce,
+      data: transferData
+    };
+
+    // EIP-712 타입 데이터 생성
+    const domain = {
+      name: 'MinimalForwarder',
+      version: '1.0.0',
+      chainId: 11155111, // Sepolia
+      verifyingContract: process.env.MINIMAL_FORWARDER_ADDRESS
+    };
+
+    const types = {
+      ForwardRequest: [
+        { name: 'from', type: 'address' },
+        { name: 'to', type: 'address' },
+        { name: 'value', type: 'uint256' },
+        { name: 'gas', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'data', type: 'bytes' }
+      ]
+    };
+
+    res.json({
+      success: true,
+      request: request,
+      domain: domain,
+      types: types,
+      primaryType: 'ForwardRequest'
+    });
+
+  } catch (error) {
+    console.error('메타 트랜잭션 준비 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to prepare meta-transaction',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================
 // 인증 API (EIP-4361)
 // ============================================================
 
@@ -515,16 +596,16 @@ module.exports = router;
 
 /**
  * POST /api/marketplace/purchase
- * NFT 구매
+ * NFT 구매 (메타 트랜잭션 사용)
  */
 router.post('/purchase', authenticateToken, async (req, res) => {
   try {
-    const { listingId, buyerAddress } = req.body;
+    const { listingId, buyerAddress, paymentSignature } = req.body;
 
-    if (!listingId || !buyerAddress) {
+    if (!listingId || !buyerAddress || !paymentSignature) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: listingId, buyerAddress'
+        error: 'Missing required fields: listingId, buyerAddress, paymentSignature'
       });
     }
 
@@ -570,18 +651,52 @@ router.post('/purchase', authenticateToken, async (req, res) => {
       });
     }
 
-    // NFT 소유권 이전
-    const transferResult = await blockchain.transferNFT(
-      listing.seller_address,
-      buyerAddress,
-      listing.token_id
-    );
+    // 1단계: 메타 트랜잭션으로 토큰 결제 (구매자 → 판매자)
+    console.log(`💳 1단계: 토큰 결제 (${listing.price} KQTP)`);
+    const priceInWei = blockchain.web3.utils.toWei(listing.price.toString(), 'ether');
+    
+    let paymentResult;
+    try {
+      paymentResult = await blockchain.transferTokensViaMetaTx(
+        buyerAddress,
+        listing.seller_address,
+        priceInWei,
+        paymentSignature
+      );
+      console.log(`✅ 토큰 결제 완료: ${paymentResult.transactionHash}`);
+    } catch (error) {
+      console.error(`❌ 토큰 결제 실패:`, error.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Payment failed',
+        message: error.message
+      });
+    }
 
-    // TODO: 토큰 결제는 프론트엔드에서 처리
-    // 사용자가 먼저 토큰을 판매자에게 전송한 후 이 API를 호출해야 함
-    console.log(`⚠️  토큰 결제는 프론트엔드에서 처리됨 (${listing.price} KQTP)`);
+    // 2단계: NFT 소유권 이전 (판매자 → 구매자)
+    console.log(`🎨 2단계: NFT 전송`);
+    let transferResult;
+    try {
+      transferResult = await blockchain.transferNFT(
+        listing.seller_address,
+        buyerAddress,
+        listing.token_id
+      );
+      console.log(`✅ NFT 전송 완료: ${transferResult.transactionHash}`);
+    } catch (error) {
+      console.error(`❌ NFT 전송 실패:`, error.message);
+      // 토큰은 이미 전송되었으므로 심각한 오류
+      // TODO: 관리자에게 알림 필요
+      return res.status(500).json({
+        success: false,
+        error: 'NFT transfer failed after payment',
+        message: error.message,
+        paymentTxHash: paymentResult.transactionHash,
+        critical: true
+      });
+    }
 
-    // 판매 상태 업데이트
+    // 3단계: 판매 상태 업데이트
     await db.query(
       `UPDATE marketplace_listings 
        SET status = 'sold', buyer_address = ?, sold_at = NOW() 
@@ -604,15 +719,15 @@ router.post('/purchase', authenticateToken, async (req, res) => {
       price: listing.price,
       purchase_type: 'p2p',
       transfer_tx_hash: transferResult.transactionHash,
-      payment_tx_hash: null // TODO: 프론트엔드에서 전송한 txHash 받아서 저장
+      payment_tx_hash: paymentResult.transactionHash
     });
 
     console.log(`✅ NFT 구매 완료: TokenID ${listing.token_id}`);
 
     res.json({
       success: true,
-      txHash: transferResult.transactionHash,
-      paymentTxHash: null, // TODO: 프론트엔드에서 처리
+      paymentTxHash: paymentResult.transactionHash,
+      transferTxHash: transferResult.transactionHash,
       status: 'confirmed',
       tokenId: listing.token_id
     });
@@ -672,20 +787,20 @@ router.get('/shop/items', async (req, res) => {
 
 /**
  * POST /api/marketplace/shop/purchase
- * 서버 상점 아이템 구매
+ * 서버 상점 아이템 구매 (메타 트랜잭션 사용)
  */
 router.post('/shop/purchase', authenticateToken, async (req, res) => {
   try {
     console.log('🛒 상점 구매 요청:', req.body);
     console.log('👤 인증된 사용자:', req.user);
     
-    const { itemId, buyerAddress } = req.body;
+    const { itemId, buyerAddress, paymentSignature } = req.body;
 
-    if (!itemId || !buyerAddress) {
-      console.error('❌ 필수 필드 누락:', { itemId, buyerAddress });
+    if (!itemId || !buyerAddress || !paymentSignature) {
+      console.error('❌ 필수 필드 누락:', { itemId, buyerAddress, paymentSignature: !!paymentSignature });
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: itemId, buyerAddress'
+        error: 'Missing required fields: itemId, buyerAddress, paymentSignature'
       });
     }
 
@@ -736,12 +851,36 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
 
     console.log(`✅ 토큰 잔액 확인 완료: ${balanceInEther} KQTP`);
     
-    // TODO: 토큰 결제는 프론트엔드에서 처리
-    // 사용자가 먼저 토큰을 서버 지갑으로 전송한 후 이 API를 호출해야 함
-    // 또는 txHash를 받아서 검증하는 방식으로 변경 필요
-    console.log(`⚠️  토큰 결제는 프론트엔드에서 처리됨 (${item.price} KQTP)`);
+    // 서버 지갑 주소
+    const serverWallet = process.env.SERVER_WALLET_ADDRESS;
+    if (!serverWallet) {
+      throw new Error('SERVER_WALLET_ADDRESS not configured');
+    }
 
-    // NFT 메타데이터 생성 및 IPFS 업로드
+    // 1단계: 메타 트랜잭션으로 토큰 결제 (구매자 → 서버)
+    console.log(`💳 1단계: 토큰 결제 (${item.price} KQTP → ${serverWallet})`);
+    const priceInWei = blockchain.web3.utils.toWei(item.price.toString(), 'ether');
+    
+    let paymentResult;
+    try {
+      paymentResult = await blockchain.transferTokensViaMetaTx(
+        buyerAddress,
+        serverWallet,
+        priceInWei,
+        paymentSignature
+      );
+      console.log(`✅ 토큰 결제 완료: ${paymentResult.transactionHash}`);
+    } catch (error) {
+      console.error(`❌ 토큰 결제 실패:`, error.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Payment failed',
+        message: error.message
+      });
+    }
+
+    // 2단계: NFT 메타데이터 생성 및 IPFS 업로드
+    console.log(`📦 2단계: NFT 메타데이터 생성`);
     const IPFSManager = require('../services/IPFSManager');
     const ipfs = new IPFSManager();
     
@@ -772,15 +911,31 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
       }
     });
 
-    // NFT 민팅
+    // 3단계: NFT 민팅
+    console.log(`🎨 3단계: NFT 민팅`);
     const tokenId = await blockchain.generateTokenId();
-    const mintResult = await blockchain.mintNFT(
-      buyerAddress,
-      tokenId,
-      nftData.metadataURI
-    );
+    let mintResult;
+    try {
+      mintResult = await blockchain.mintNFT(
+        buyerAddress,
+        tokenId,
+        nftData.metadataURI
+      );
+      console.log(`✅ NFT 민팅 완료: TokenID ${tokenId}`);
+    } catch (error) {
+      console.error(`❌ NFT 민팅 실패:`, error.message);
+      // 토큰은 이미 전송되었으므로 심각한 오류
+      // TODO: 관리자에게 알림 필요
+      return res.status(500).json({
+        success: false,
+        error: 'NFT minting failed after payment',
+        message: error.message,
+        paymentTxHash: paymentResult.transactionHash,
+        critical: true
+      });
+    }
 
-    // 재고 감소
+    // 4단계: 재고 감소
     await db.query(
       'UPDATE server_shop SET stock = stock - 1 WHERE id = ?',
       [itemId]
@@ -802,7 +957,7 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
       buyer_address: buyerAddress.toLowerCase(),
       price: item.price,
       purchase_type: 'server_shop',
-      payment_tx_hash: null, // TODO: 프론트엔드에서 전송한 txHash 받아서 저장
+      payment_tx_hash: paymentResult.transactionHash,
       mint_tx_hash: mintResult.mintTransactionHash || mintResult.transactionHash,
       transfer_tx_hash: mintResult.transferTransactionHash || null
     });
@@ -812,9 +967,9 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       tokenId: tokenId,
+      paymentTxHash: paymentResult.transactionHash,
       mintTxHash: mintResult.mintTransactionHash || mintResult.transactionHash,
       transferTxHash: mintResult.transferTransactionHash,
-      paymentTxHash: null, // TODO: 프론트엔드에서 처리
       status: 'confirmed',
       metadata: nftData.metadataURI
     });

@@ -3,7 +3,7 @@
  * 스마트 컨트랙트와의 상호작용 처리
  */
 
-const { web3, adminAccount, gameTokenContract, gameAssetNFTContract } = require('../config/web3');
+const { web3, adminAccount, gameTokenContract, gameAssetNFTContract, minimalForwarderContract } = require('../config/web3');
 
 class BlockchainService {
   constructor() {
@@ -11,6 +11,7 @@ class BlockchainService {
     this.adminAccount = adminAccount;
     this.gameTokenContract = gameTokenContract;
     this.gameAssetNFTContract = gameAssetNFTContract;
+    this.minimalForwarderContract = minimalForwarderContract;
   }
 
   /**
@@ -367,6 +368,118 @@ class BlockchainService {
     // 모든 시도 실패 시 타임스탬프 기반 폴백
     console.warn('⚠️  폴백: 타임스탬프 기반 Token ID 사용');
     return Date.now() + Math.floor(Math.random() * 1000);
+  }
+
+  /**
+   * 메타 트랜잭션 실행 (EIP-2771)
+   * @param {Object} request - ForwardRequest 객체
+   * @param {string} signature - 사용자 서명
+   * @returns {Promise<Object>} 트랜잭션 영수증
+   */
+  async executeMetaTransaction(request, signature) {
+    try {
+      console.log(`🔐 메타 트랜잭션 실행 시작`);
+      console.log(`   From: ${request.from}`);
+      console.log(`   To: ${request.to}`);
+      console.log(`   Nonce: ${request.nonce}`);
+      
+      // 서명 검증
+      const isValid = await this.minimalForwarderContract.methods
+        .verify(request, signature)
+        .call();
+      
+      if (!isValid) {
+        throw new Error('Invalid signature for meta-transaction');
+      }
+      
+      console.log(`✅ 서명 검증 완료`);
+      
+      // 메타 트랜잭션 실행
+      const tx = this.minimalForwarderContract.methods.execute(request, signature);
+      
+      const gas = await tx.estimateGas({ from: this.adminAccount.address });
+      const gasPrice = await this.estimateGasPrice();
+      const nonce = await this.web3.eth.getTransactionCount(this.adminAccount.address, 'pending');
+      
+      console.log(`⛽ 가스: ${gas}, 가스 가격: ${gasPrice}, nonce: ${nonce}`);
+      
+      const signedTx = await this.adminAccount.signTransaction({
+        to: this.minimalForwarderContract.options.address,
+        data: tx.encodeABI(),
+        gas: gas,
+        gasPrice: gasPrice,
+        nonce: nonce
+      });
+      
+      const receipt = await this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+      
+      console.log(`✅ 메타 트랜잭션 실행 완료: ${receipt.transactionHash}`);
+      
+      return {
+        success: true,
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed.toString()
+      };
+    } catch (error) {
+      console.error(`❌ 메타 트랜잭션 실패:`, error.message);
+      throw new Error(`Meta-transaction failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * 사용자의 현재 nonce 조회 (메타 트랜잭션용)
+   * @param {string} address - 사용자 주소
+   * @returns {Promise<string>} nonce
+   */
+  async getMetaTxNonce(address) {
+    try {
+      const nonce = await this.minimalForwarderContract.methods.getNonce(address).call();
+      return nonce.toString();
+    } catch (error) {
+      throw new Error(`Failed to get nonce: ${error.message}`);
+    }
+  }
+
+  /**
+   * 메타 트랜잭션으로 토큰 전송 (사용자 서명 필요)
+   * @param {string} fromAddress - 송신자 주소 (사용자)
+   * @param {string} toAddress - 수신자 주소
+   * @param {string} amount - 전송 금액 (wei 단위)
+   * @param {string} signature - 사용자 서명
+   * @returns {Promise<Object>} 트랜잭션 영수증
+   */
+  async transferTokensViaMetaTx(fromAddress, toAddress, amount, signature) {
+    try {
+      console.log(`💰 메타 트랜잭션 토큰 전송: ${this.web3.utils.fromWei(amount, 'ether')} KQTP`);
+      console.log(`   ${fromAddress} → ${toAddress}`);
+      
+      // transfer 함수 호출 데이터 생성
+      const transferData = this.gameTokenContract.methods.transfer(toAddress, amount).encodeABI();
+      
+      // 현재 nonce 조회
+      const nonce = await this.getMetaTxNonce(fromAddress);
+      
+      // ForwardRequest 생성
+      const request = {
+        from: fromAddress,
+        to: this.gameTokenContract.options.address,
+        value: '0',
+        gas: '100000', // 충분한 가스 제공
+        nonce: nonce,
+        data: transferData
+      };
+      
+      // 메타 트랜잭션 실행
+      const result = await this.executeMetaTransaction(request, signature);
+      
+      console.log(`✅ 메타 트랜잭션 토큰 전송 완료`);
+      
+      return result;
+    } catch (error) {
+      console.error(`❌ 메타 트랜잭션 토큰 전송 실패:`, error.message);
+      throw new Error(`Meta-transaction token transfer failed: ${error.message}`);
+    }
   }
 
   /**

@@ -47,6 +47,13 @@ const gameAssetNFTContract = new web3.eth.Contract(
   process.env.GAME_ASSET_NFT_ADDRESS
 );
 
+// MinimalForwarder 컨트랙트 인스턴스 (EIP-2771 메타 트랜잭션)
+const minimalForwarderABI = loadContractABI('MinimalForwarder');
+const minimalForwarderContract = new web3.eth.Contract(
+  minimalForwarderABI,
+  process.env.MINIMAL_FORWARDER_ADDRESS
+);
+
 /**
  * 가스 가격 추정
  * @returns {Promise<bigint>} 가스 가격
@@ -105,6 +112,7 @@ module.exports = {
   adminAccount,
   gameTokenContract,
   gameAssetNFTContract,
+  minimalForwarderContract,
   estimateGasPrice,
   sendTransaction,
   getTransactionStatus
