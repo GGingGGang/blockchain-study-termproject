@@ -27,12 +27,30 @@ const blockchain = new BlockchainService();
  */
 router.post('/meta-tx/prepare', authenticateToken, async (req, res) => {
   try {
+    console.log('🔐 메타 트랜잭션 준비 요청:', {
+      body: req.body,
+      user: req.user
+    });
+    
     const { fromAddress, toAddress, amount } = req.body;
 
     if (!fromAddress || !toAddress || !amount) {
+      console.error('❌ 필수 필드 누락:', {
+        fromAddress: fromAddress || 'MISSING',
+        toAddress: toAddress || 'MISSING',
+        amount: amount || 'MISSING',
+        receivedFields: Object.keys(req.body)
+      });
+      
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: fromAddress, toAddress, amount'
+        error: 'Missing required fields: fromAddress, toAddress, amount',
+        received: {
+          fromAddress: !!fromAddress,
+          toAddress: !!toAddress,
+          amount: !!amount
+        },
+        receivedFields: Object.keys(req.body)
       });
     }
 
@@ -89,11 +107,18 @@ router.post('/meta-tx/prepare', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('메타 트랜잭션 준비 오류:', error);
+    console.error('❌ 메타 트랜잭션 준비 오류:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body,
+      user: req.user
+    });
+    
     res.status(500).json({
       success: false,
       error: 'Failed to prepare meta-transaction',
-      message: error.message
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -600,12 +625,31 @@ module.exports = router;
  */
 router.post('/purchase', authenticateToken, async (req, res) => {
   try {
+    console.log('💰 NFT 구매 요청 받음:', {
+      body: req.body,
+      headers: req.headers,
+      user: req.user
+    });
+    
     const { listingId, buyerAddress, paymentSignature } = req.body;
 
     if (!listingId || !buyerAddress || !paymentSignature) {
+      console.error('❌ 필수 필드 누락:', {
+        listingId: listingId || 'MISSING',
+        buyerAddress: buyerAddress || 'MISSING',
+        paymentSignature: paymentSignature ? 'EXISTS' : 'MISSING',
+        receivedFields: Object.keys(req.body)
+      });
+      
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: listingId, buyerAddress, paymentSignature'
+        error: 'Missing required fields: listingId, buyerAddress, paymentSignature',
+        received: {
+          listingId: !!listingId,
+          buyerAddress: !!buyerAddress,
+          paymentSignature: !!paymentSignature
+        },
+        receivedFields: Object.keys(req.body)
       });
     }
 
@@ -733,11 +777,18 @@ router.post('/purchase', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('NFT 구매 오류:', error);
+    console.error('❌ NFT 구매 오류:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body,
+      user: req.user
+    });
+    
     res.status(500).json({
       success: false,
       error: 'Purchase failed',
-      message: error.message
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -791,16 +842,31 @@ router.get('/shop/items', async (req, res) => {
  */
 router.post('/shop/purchase', authenticateToken, async (req, res) => {
   try {
-    console.log('🛒 상점 구매 요청:', req.body);
-    console.log('👤 인증된 사용자:', req.user);
+    console.log('🛒 상점 구매 요청 받음:', {
+      body: req.body,
+      headers: req.headers,
+      user: req.user
+    });
     
     const { itemId, buyerAddress, paymentSignature } = req.body;
 
     if (!itemId || !buyerAddress || !paymentSignature) {
-      console.error('❌ 필수 필드 누락:', { itemId, buyerAddress, paymentSignature: !!paymentSignature });
+      console.error('❌ 필수 필드 누락:', {
+        itemId: itemId || 'MISSING',
+        buyerAddress: buyerAddress || 'MISSING',
+        paymentSignature: paymentSignature ? 'EXISTS' : 'MISSING',
+        receivedFields: Object.keys(req.body)
+      });
+      
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: itemId, buyerAddress, paymentSignature'
+        error: 'Missing required fields: itemId, buyerAddress, paymentSignature',
+        received: {
+          itemId: !!itemId,
+          buyerAddress: !!buyerAddress,
+          paymentSignature: !!paymentSignature
+        },
+        receivedFields: Object.keys(req.body)
       });
     }
 
@@ -975,11 +1041,18 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('상점 구매 오류:', error);
+    console.error('❌ 상점 구매 오류:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body,
+      user: req.user
+    });
+    
     res.status(500).json({
       success: false,
       error: 'Shop purchase failed',
-      message: error.message
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
