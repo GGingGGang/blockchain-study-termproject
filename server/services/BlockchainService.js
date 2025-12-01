@@ -194,19 +194,19 @@ class BlockchainService {
   }
 
   /**
-   * ERC-20 토큰 전송 (관리자 계정에서 대신 전송)
-   * @param {string} fromAddress - 송신자 주소 (transferFrom 사용)
+   * ERC-20 토큰 전송 (관리자 계정에서만 가능)
+   * @param {string} fromAddress - 송신자 주소 (무시됨, 항상 관리자 계정 사용)
    * @param {string} toAddress - 수신자 주소
    * @param {string} amount - 전송 금액 (wei 단위)
    * @returns {Promise<Object>} 트랜잭션 영수증
    */
   async transferTokens(fromAddress, toAddress, amount) {
     try {
-      console.log(`💰 토큰 전송: ${this.web3.utils.fromWei(amount, 'ether')} KQTP (${fromAddress} → ${toAddress})`);
-      console.log(`🔑 실제 서명자: ${this.adminAccount.address}`);
+      console.log(`💰 토큰 전송: ${this.web3.utils.fromWei(amount, 'ether')} KQTP (관리자 → ${toAddress})`);
+      console.log(`🔑 서명자: ${this.adminAccount.address}`);
       
-      // transferFrom 사용 (관리자가 대신 전송)
-      const tx = this.gameTokenContract.methods.transferFrom(fromAddress, toAddress, amount);
+      // 관리자 계정에서 transfer 사용
+      const tx = this.gameTokenContract.methods.transfer(toAddress, amount);
       
       // 가스 추정
       const gas = await tx.estimateGas({ from: this.adminAccount.address });

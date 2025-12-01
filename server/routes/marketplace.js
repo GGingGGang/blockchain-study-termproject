@@ -725,18 +725,10 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
 
     console.log(`✅ 토큰 잔액 확인 완료: ${balanceInEther} KQTP`);
     
-    // 토큰 결제 (구매자 → 서버)
-    console.log(`💰 토큰 결제 시작: ${item.price} KQTP`);
-    const paymentAmount = blockchain.web3.utils.toWei(item.price.toString(), 'ether');
-    const serverWallet = process.env.SERVER_WALLET_ADDRESS;
-    
-    const paymentResult = await blockchain.transferTokens(
-      buyerAddress,
-      serverWallet,
-      paymentAmount
-    );
-    
-    console.log(`✅ 토큰 결제 완료: ${paymentResult.transactionHash}`);
+    // TODO: 토큰 결제는 프론트엔드에서 처리
+    // 사용자가 먼저 토큰을 서버 지갑으로 전송한 후 이 API를 호출해야 함
+    // 또는 txHash를 받아서 검증하는 방식으로 변경 필요
+    console.log(`⚠️  토큰 결제는 프론트엔드에서 처리됨 (${item.price} KQTP)`);
 
     // NFT 메타데이터 생성 및 IPFS 업로드
     const IPFSManager = require('../services/IPFSManager');
