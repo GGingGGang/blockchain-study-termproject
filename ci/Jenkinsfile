@@ -49,9 +49,14 @@ pipeline {
                 }
             }
         }
-        
+ 
         stage('Build') {
             steps {
+                echo '🧱 Hardhat 컴파일 중...'
+
+                sh '''
+                    'npx hardhat compile'
+                '''
                 echo '🔨 빌드 준비...'
                 sh '''
                     # 배포용 파일만 복사 (server + marketplace만)
@@ -60,6 +65,8 @@ pipeline {
                     cp -r marketplace dist/
                     cp package*.json dist/
                     cp .env.example dist/
+                    cp -r artifacts dist/
+
                 '''
             }
         }
