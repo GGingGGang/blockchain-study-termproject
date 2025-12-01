@@ -144,10 +144,10 @@ class MarketplaceAPI {
     /**
      * NFT 구매 (메타 트랜잭션 사용)
      */
-    async purchaseNFT(listingId, buyerAddress, paymentSignature) {
+    async purchaseNFT(listingId, buyerAddress, paymentSignature, paymentRequest) {
         return await this.request('/api/marketplace/purchase', {
             method: 'POST',
-            body: JSON.stringify({ listingId, buyerAddress, paymentSignature })
+            body: JSON.stringify({ listingId, buyerAddress, paymentSignature, paymentRequest })
         });
     }
 
@@ -163,10 +163,10 @@ class MarketplaceAPI {
     /**
      * 서버 상점 아이템 구매 (메타 트랜잭션 사용)
      */
-    async purchaseShopItem(itemId, buyerAddress, paymentSignature) {
+    async purchaseShopItem(itemId, buyerAddress, paymentSignature, paymentRequest) {
         return await this.request('/api/marketplace/shop/purchase', {
             method: 'POST',
-            body: JSON.stringify({ itemId, buyerAddress, paymentSignature })
+            body: JSON.stringify({ itemId, buyerAddress, paymentSignature, paymentRequest })
         });
     }
 

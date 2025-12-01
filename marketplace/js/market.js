@@ -242,13 +242,14 @@ async function purchaseNFT(nft) {
 
         console.log('서명 완료:', signature);
 
-        // 3단계: 구매 요청 (서명 포함)
+        // 3단계: 구매 요청 (서명 및 request 객체 포함)
         Utils.showNotification('구매 처리 중...', 'info');
         
         const response = await api.purchaseNFT(
             nft.listingId, 
             currentAddress,
-            signature
+            signature,
+            prepareData.request
         );
 
         Utils.showNotification('구매 완료!', 'success');

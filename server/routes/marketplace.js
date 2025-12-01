@@ -631,23 +631,25 @@ router.post('/purchase', authenticateToken, async (req, res) => {
       user: req.user
     });
     
-    const { listingId, buyerAddress, paymentSignature } = req.body;
+    const { listingId, buyerAddress, paymentSignature, paymentRequest } = req.body;
 
-    if (!listingId || !buyerAddress || !paymentSignature) {
+    if (!listingId || !buyerAddress || !paymentSignature || !paymentRequest) {
       console.error('❌ 필수 필드 누락:', {
         listingId: listingId || 'MISSING',
         buyerAddress: buyerAddress || 'MISSING',
         paymentSignature: paymentSignature ? 'EXISTS' : 'MISSING',
+        paymentRequest: paymentRequest ? 'EXISTS' : 'MISSING',
         receivedFields: Object.keys(req.body)
       });
       
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: listingId, buyerAddress, paymentSignature',
+        error: 'Missing required fields: listingId, buyerAddress, paymentSignature, paymentRequest',
         received: {
           listingId: !!listingId,
           buyerAddress: !!buyerAddress,
-          paymentSignature: !!paymentSignature
+          paymentSignature: !!paymentSignature,
+          paymentRequest: !!paymentRequest
         },
         receivedFields: Object.keys(req.body)
       });
@@ -697,14 +699,12 @@ router.post('/purchase', authenticateToken, async (req, res) => {
 
     // 1단계: 메타 트랜잭션으로 토큰 결제 (구매자 → 판매자)
     console.log(`💳 1단계: 토큰 결제 (${listing.price} KQTP)`);
-    const priceInWei = blockchain.web3.utils.toWei(listing.price.toString(), 'ether');
     
     let paymentResult;
     try {
-      paymentResult = await blockchain.transferTokensViaMetaTx(
-        buyerAddress,
-        listing.seller_address,
-        priceInWei,
+      // 프론트엔드에서 서명한 request 객체를 그대로 사용
+      paymentResult = await blockchain.executeMetaTransaction(
+        paymentRequest,
         paymentSignature
       );
       console.log(`✅ 토큰 결제 완료: ${paymentResult.transactionHash}`);
@@ -848,23 +848,25 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
       user: req.user
     });
     
-    const { itemId, buyerAddress, paymentSignature } = req.body;
+    const { itemId, buyerAddress, paymentSignature, paymentRequest } = req.body;
 
-    if (!itemId || !buyerAddress || !paymentSignature) {
+    if (!itemId || !buyerAddress || !paymentSignature || !paymentRequest) {
       console.error('❌ 필수 필드 누락:', {
         itemId: itemId || 'MISSING',
         buyerAddress: buyerAddress || 'MISSING',
         paymentSignature: paymentSignature ? 'EXISTS' : 'MISSING',
+        paymentRequest: paymentRequest ? 'EXISTS' : 'MISSING',
         receivedFields: Object.keys(req.body)
       });
       
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: itemId, buyerAddress, paymentSignature',
+        error: 'Missing required fields: itemId, buyerAddress, paymentSignature, paymentRequest',
         received: {
           itemId: !!itemId,
           buyerAddress: !!buyerAddress,
-          paymentSignature: !!paymentSignature
+          paymentSignature: !!paymentSignature,
+          paymentRequest: !!paymentRequest
         },
         receivedFields: Object.keys(req.body)
       });
@@ -925,14 +927,12 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
 
     // 1단계: 메타 트랜잭션으로 토큰 결제 (구매자 → 서버)
     console.log(`💳 1단계: 토큰 결제 (${item.price} KQTP → ${serverWallet})`);
-    const priceInWei = blockchain.web3.utils.toWei(item.price.toString(), 'ether');
     
     let paymentResult;
     try {
-      paymentResult = await blockchain.transferTokensViaMetaTx(
-        buyerAddress,
-        serverWallet,
-        priceInWei,
+      // 프론트엔드에서 서명한 request 객체를 그대로 사용
+      paymentResult = await blockchain.executeMetaTransaction(
+        paymentRequest,
         paymentSignature
       );
       console.log(`✅ 토큰 결제 완료: ${paymentResult.transactionHash}`);
