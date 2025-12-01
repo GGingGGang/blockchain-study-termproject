@@ -417,3 +417,44 @@
         padding: 0.5rem;
     }
 }
+
+
+/* 닉네임 모달 폼 스타일 */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #ddd;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.5rem;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.user-nickname {
+    color: #007bff;
+    font-weight: bold;
+    margin-right: 0.5rem;
+}

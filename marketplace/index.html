@@ -24,7 +24,9 @@
             <div class="wallet-section">
                 <button id="connectWallet" class="btn btn-primary">지갑 연결</button>
                 <button id="addTokenBtn" class="btn btn-secondary" style="display: none;">KQTP 추가</button>
+                <button id="nicknameBtn" class="btn btn-secondary" style="display: none;">닉네임 설정</button>
                 <div id="walletInfo" class="wallet-info" style="display: none;">
+                    <span class="user-nickname" id="userNickname" style="margin-right: 0.5rem; font-weight: bold;"></span>
                     <span id="walletAddress"></span>
                     <span id="tokenBalance"></span>
                 </div>
@@ -62,6 +64,33 @@
         </section>
     </main>
 
+    <!-- 닉네임 설정 모달 -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>닉네임 설정</h3>
+                <button class="close-btn" onclick="ui.closeModal('nicknameModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="nicknameInput">닉네임</label>
+                    <input 
+                        type="text" 
+                        id="nicknameInput" 
+                        placeholder="2-20자 (한글, 영문, 숫자, _)" 
+                        maxlength="20"
+                        class="form-control"
+                    >
+                    <small class="form-text">현재 닉네임: <span id="currentNickname">없음</span></small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelNickname" class="btn btn-secondary">취소</button>
+                <button id="saveNickname" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 푸터 -->
     <footer class="footer">
         <div class="container">
@@ -81,6 +110,7 @@
     <script src="js/web3-helper.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/add-token.js"></script>
+    <script src="js/nickname.js"></script>
     <script src="js/index.js"></script>
     
     <script>

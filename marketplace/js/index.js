@@ -6,8 +6,14 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('홈페이지 초기화...');
 
+    // 닉네임 모달 초기화
+    initNicknameModal();
+
     // 지갑 연결 버튼 이벤트
     setupWalletConnection();
+
+    // 닉네임 버튼 이벤트
+    setupNicknameButton();
 
     // 저장된 세션 확인
     await checkSavedSession();
@@ -38,6 +44,13 @@ function setupWalletConnection() {
                 
                 // UI 업데이트
                 ui.updateWalletInfo(address, balance);
+                
+                // 닉네임 로드 및 표시
+                await loadAndDisplayNickname(address);
+                
+                // 닉네임 버튼 표시
+                const nicknameBtn = document.getElementById('nicknameBtn');
+                if (nicknameBtn) nicknameBtn.style.display = 'inline-block';
                 
                 Utils.showNotification('지갑 연결 성공!', 'success');
             } catch (error) {
@@ -78,6 +91,13 @@ async function checkSavedSession() {
             
             // UI 업데이트
             ui.updateWalletInfo(savedAddress, balance);
+            
+            // 닉네임 로드 및 표시
+            await loadAndDisplayNickname(savedAddress);
+            
+            // 닉네임 버튼 표시
+            const nicknameBtn = document.getElementById('nicknameBtn');
+            if (nicknameBtn) nicknameBtn.style.display = 'inline-block';
             
             console.log('세션 복원 완료');
         } catch (error) {
@@ -127,6 +147,24 @@ async function loadFeaturedNFTs() {
         console.error('NFT 목록 로드 실패:', error);
         Utils.hideLoading('loadingSpinner');
         Utils.showNotification('NFT 목록을 불러올 수 없습니다.', 'error');
+    }
+}
+
+/**
+ * 닉네임 버튼 설정
+ */
+function setupNicknameButton() {
+    const nicknameBtn = document.getElementById('nicknameBtn');
+    
+    if (nicknameBtn) {
+        nicknameBtn.addEventListener('click', () => {
+            const savedAddress = metamask.getSavedAddress();
+            if (savedAddress) {
+                openNicknameModal(savedAddress);
+            } else {
+                Utils.showNotification('먼저 지갑을 연결해주세요.', 'warning');
+            }
+        });
     }
 }
 
