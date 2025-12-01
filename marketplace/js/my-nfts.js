@@ -109,25 +109,30 @@ async function loadMyNFTs() {
 
         if (response.nfts && response.nfts.length > 0) {
             // NFT 카드 렌더링
-            ui.renderNFTList(container, response.nfts, {
-                showStatus: true,
-                actions: response.nfts.map(nft => {
-                    if (nft.isListed) {
-                        return {
-                            name: 'cancel',
-                            label: '판매 취소',
-                            type: 'danger',
-                            handler: (nft) => cancelListing(nft)
-                        };
-                    } else {
-                        return {
-                            name: 'list',
-                            label: '판매 등록',
-                            type: 'primary',
-                            handler: (nft) => showListingModal(nft)
-                        };
-                    }
-                })
+            response.nfts.forEach(nft => {
+                const actions = [];
+                
+                if (nft.isListed) {
+                    actions.push({
+                        name: 'cancel',
+                        label: '판매 취소',
+                        type: 'danger',
+                        handler: () => cancelListing(nft)
+                    });
+                } else {
+                    actions.push({
+                        name: 'list',
+                        label: '판매 등록',
+                        type: 'primary',
+                        handler: () => showListingModal(nft)
+                    });
+                }
+                
+                const card = ui.renderNFTCard(nft, {
+                    showStatus: true,
+                    actions: actions
+                });
+                container.appendChild(card);
             });
         } else {
             const emptyState = document.getElementById('emptyState');
