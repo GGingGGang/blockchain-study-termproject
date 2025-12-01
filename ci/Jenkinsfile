@@ -70,6 +70,7 @@ pipeline {
                     mkdir -p dist
                     cp -r server dist/
                     cp -r marketplace dist/
+                    cp -r game dist/
                     cp package*.json dist/
                     cp .env.example dist/
                     cp -r artifacts dist/
