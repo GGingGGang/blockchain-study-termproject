@@ -223,20 +223,26 @@ async function purchaseNFT(nft) {
         );
 
         console.log('메타 트랜잭션 데이터:', prepareData);
+        console.log('서명할 domain:', prepareData.domain);
+        console.log('서명할 message:', prepareData.request);
 
         // 2단계: EIP-712 서명 요청
         Utils.showNotification('MetaMask에서 서명을 확인해주세요...', 'info');
+        
+        const typedData = {
+            domain: prepareData.domain,
+            types: prepareData.types,
+            primaryType: prepareData.primaryType,
+            message: prepareData.request
+        };
+        
+        console.log('전체 typedData:', JSON.stringify(typedData, null, 2));
         
         const signature = await ethereum.request({
             method: 'eth_signTypedData_v4',
             params: [
                 currentAddress,
-                JSON.stringify({
-                    domain: prepareData.domain,
-                    types: prepareData.types,
-                    primaryType: prepareData.primaryType,
-                    message: prepareData.request
-                })
+                JSON.stringify(typedData)
             ]
         });
 

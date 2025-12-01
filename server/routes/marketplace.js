@@ -84,7 +84,7 @@ router.post('/meta-tx/prepare', authenticateToken, async (req, res) => {
       name: 'MinimalForwarder',
       version: '1.0.0',
       chainId: 11155111, // Sepolia
-      verifyingContract: process.env.MINIMAL_FORWARDER_ADDRESS
+      verifyingContract: process.env.MINIMAL_FORWARDER_ADDRESS.toLowerCase()
     };
 
     const types = {
@@ -97,6 +97,11 @@ router.post('/meta-tx/prepare', authenticateToken, async (req, res) => {
         { name: 'data', type: 'bytes' }
       ]
     };
+
+    console.log('📤 메타 트랜잭션 준비 완료:', {
+      domain: domain,
+      request: request
+    });
 
     res.json({
       success: true,

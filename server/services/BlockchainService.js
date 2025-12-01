@@ -402,7 +402,7 @@ class BlockchainService {
         name: 'MinimalForwarder',
         version: '1.0.0',
         chainId: 11155111, // Sepolia
-        verifyingContract: process.env.MINIMAL_FORWARDER_ADDRESS
+        verifyingContract: process.env.MINIMAL_FORWARDER_ADDRESS.toLowerCase()
       };
       
       const types = {
