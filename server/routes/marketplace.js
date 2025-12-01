@@ -780,7 +780,7 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
       token_id: tokenId,
       owner_address: buyerAddress.toLowerCase(),
       ipfs_cid: nftData.metadataCID,
-      mint_tx_hash: mintResult.transactionHash,
+      mint_tx_hash: mintResult.mintTransactionHash || mintResult.transactionHash,
       status: 'active'
     });
 
@@ -792,7 +792,8 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
       price: item.price,
       purchase_type: 'server_shop',
       payment_tx_hash: null, // TODO: 프론트엔드에서 전송한 txHash 받아서 저장
-      mint_tx_hash: mintResult.transactionHash
+      mint_tx_hash: mintResult.mintTransactionHash || mintResult.transactionHash,
+      transfer_tx_hash: mintResult.transferTransactionHash || null
     });
 
     console.log(`✅ 상점 구매 완료: TokenID ${tokenId}`);
@@ -800,7 +801,8 @@ router.post('/shop/purchase', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       tokenId: tokenId,
-      txHash: mintResult.transactionHash,
+      mintTxHash: mintResult.mintTransactionHash || mintResult.transactionHash,
+      transferTxHash: mintResult.transferTransactionHash,
       paymentTxHash: null, // TODO: 프론트엔드에서 처리
       status: 'confirmed',
       metadata: nftData.metadataURI
