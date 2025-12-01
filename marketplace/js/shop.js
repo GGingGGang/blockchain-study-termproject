@@ -182,13 +182,50 @@ async function showPurchaseModal(item) {
 }
 
 /**
- * 상점 아이템 구매
+ * 상점 아이템 구매 (메타 트랜잭션 사용)
  */
 async function purchaseShopItem(item) {
     try {
-        Utils.showNotification('구매 처리 중... (토큰 결제 + NFT 민팅)', 'info');
+        Utils.showNotification('메타 트랜잭션 준비 중...', 'info');
 
-        const response = await api.purchaseShopItem(item.itemId, currentAddress);
+        // 서버 지갑 주소 (환경 변수에서 가져오거나 하드코딩)
+        const serverWallet = CONFIG.SERVER_WALLET_ADDRESS || '0xa5ab6C8C0560d51Db844182e286a380916Eb1487';
+
+        // 1단계: 메타 트랜잭션 준비 (서명 데이터 생성)
+        const prepareData = await api.prepareMetaTransaction(
+            currentAddress,
+            serverWallet,
+            item.price
+        );
+
+        console.log('메타 트랜잭션 데이터:', prepareData);
+
+        // 2단계: EIP-712 서명 요청
+        Utils.showNotification('MetaMask에서 서명을 확인해주세요...', 'info');
+        
+        const signature = await ethereum.request({
+            method: 'eth_signTypedData_v4',
+            params: [
+                currentAddress,
+                JSON.stringify({
+                    domain: prepareData.domain,
+                    types: prepareData.types,
+                    primaryType: prepareData.primaryType,
+                    message: prepareData.request
+                })
+            ]
+        });
+
+        console.log('서명 완료:', signature);
+
+        // 3단계: 구매 요청 (서명 포함)
+        Utils.showNotification('구매 처리 중... (토큰 결제 + NFT 민팅)', 'info');
+        
+        const response = await api.purchaseShopItem(
+            item.itemId, 
+            currentAddress,
+            signature
+        );
 
         Utils.showNotification('구매 완료! NFT가 발급되었습니다.', 'success');
         ui.closeModal('purchaseModal');
@@ -209,16 +246,31 @@ async function purchaseShopItem(item) {
         }
 
         // 트랜잭션 링크 표시
-        if (response.txHash) {
+        if (response.paymentTxHash) {
             setTimeout(() => {
                 Utils.showNotification(
-                    `트랜잭션: ${Utils.shortenAddress(response.txHash)}`,
+                    `결제 트랜잭션: ${Utils.shortenAddress(response.paymentTxHash)}`,
+                    'info'
+                );
+            }, 3000);
+        }
+        
+        if (response.mintTxHash) {
+            setTimeout(() => {
+                Utils.showNotification(
+                    `NFT 민팅: ${Utils.shortenAddress(response.mintTxHash)}`,
                     'info'
                 );
             }, 4000);
         }
     } catch (error) {
         console.error('구매 실패:', error);
-        Utils.showNotification('구매 실패: ' + error.message, 'error');
+        
+        // 사용자가 서명을 거부한 경우
+        if (error.code === 4001) {
+            Utils.showNotification('서명이 취소되었습니다.', 'warning');
+        } else {
+            Utils.showNotification('구매 실패: ' + error.message, 'error');
+        }
     }
 }

@@ -127,15 +127,27 @@ class MarketplaceAPI {
         });
     }
 
+    // ===== 메타 트랜잭션 API =====
+
+    /**
+     * 메타 트랜잭션 준비 (EIP-712 서명 데이터 생성)
+     */
+    async prepareMetaTransaction(fromAddress, toAddress, amount) {
+        return await this.request('/api/marketplace/meta-tx/prepare', {
+            method: 'POST',
+            body: JSON.stringify({ fromAddress, toAddress, amount })
+        });
+    }
+
     // ===== 구매 API =====
 
     /**
-     * NFT 구매
+     * NFT 구매 (메타 트랜잭션 사용)
      */
-    async purchaseNFT(listingId, buyerAddress) {
+    async purchaseNFT(listingId, buyerAddress, paymentSignature) {
         return await this.request('/api/marketplace/purchase', {
             method: 'POST',
-            body: JSON.stringify({ listingId, buyerAddress })
+            body: JSON.stringify({ listingId, buyerAddress, paymentSignature })
         });
     }
 
@@ -149,12 +161,12 @@ class MarketplaceAPI {
     }
 
     /**
-     * 서버 상점 아이템 구매
+     * 서버 상점 아이템 구매 (메타 트랜잭션 사용)
      */
-    async purchaseShopItem(itemId, buyerAddress) {
+    async purchaseShopItem(itemId, buyerAddress, paymentSignature) {
         return await this.request('/api/marketplace/shop/purchase', {
             method: 'POST',
-            body: JSON.stringify({ itemId, buyerAddress })
+            body: JSON.stringify({ itemId, buyerAddress, paymentSignature })
         });
     }
 

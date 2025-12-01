@@ -14,8 +14,12 @@ const CONFIG = {
     // 컨트랙트 주소
     CONTRACTS: {
         gameToken: '0x7032C50EcD4ceE0d5127Ac3aF55e6200b5efC802',
-        gameAssetNFT: '0x792CD029D3E6BF7312e7E5f5C84B83eAee9B0328'
+        gameAssetNFT: '0x792CD029D3E6BF7312e7E5f5C84B83eAee9B0328',
+        minimalForwarder: '0xB8C14cA694f0212b94DACFFDD31344Ec1dAC66d6'
     },
+    
+    // 서버 지갑 주소 (상점 판매 수익 수령용)
+    SERVER_WALLET_ADDRESS: '0xa5ab6C8C0560d51Db844182e286a380916Eb1487',
     
     // 컨트랙트 ABI (간소화 버전)
     ABI: {
