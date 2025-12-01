@@ -23,6 +23,7 @@ pipeline {
                 echo '📥 의존성 설치...'
                 sh '''
                     npm ci
+                    
                 '''
             }
         }
@@ -80,8 +81,11 @@ pipeline {
                                 --exclude 'test' \
                                 --exclude 'contracts' \
                                 --exclude 'scripts' \
-                                dist/ ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/
-                            
+                                dist/ ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+                            echo "=============test line 1============" 
+                            ls -al
+                            echo "=============test line 1============" 
+
                             # .env 파일 전송
                             scp ${ENV_FILE} ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/.env
                         '''
@@ -91,6 +95,11 @@ pipeline {
                         # 서버에서 의존성 설치 및 재시작
                         ssh ${DEPLOY_USER}@${DEPLOY_SERVER} << 'ENDSSH'
                             cd ${DEPLOY_PATH}
+                            
+                            echo "=============test line 2============"
+                            ls -al 
+                            echo "=============test line 2============" 
+
                             
                             # .env 파일 확인
                             if [ ! -f .env ]; then
