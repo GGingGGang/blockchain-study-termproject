@@ -226,6 +226,21 @@ async function purchaseNFT(nft) {
         console.log('서명할 domain:', prepareData.domain);
         console.log('서명할 message:', prepareData.request);
 
+        // 현재 MetaMask 활성 계정 확인
+        const accounts = await ethereum.request({ method: 'eth_accounts' });
+        const activeAccount = accounts[0];
+        
+        console.log('현재 활성 계정:', activeAccount);
+        console.log('로그인 계정:', currentAddress);
+        
+        if (activeAccount.toLowerCase() !== currentAddress.toLowerCase()) {
+            Utils.showNotification(
+                `MetaMask 계정이 다릅니다!\n활성: ${activeAccount}\n로그인: ${currentAddress}`,
+                'error'
+            );
+            throw new Error('Account mismatch: Please switch to the logged-in account in MetaMask');
+        }
+
         // 2단계: EIP-712 서명 요청
         Utils.showNotification('MetaMask에서 서명을 확인해주세요...', 'info');
         
