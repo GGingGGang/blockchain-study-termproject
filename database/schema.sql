@@ -152,13 +152,13 @@ COMMENT='EIP-4361 인증 논스 관리';
 -- 3. 초기 데이터 삽입
 -- ============================================================
 
--- 서버 상점 샘플 데이터
+-- 서버 상점 샘플 데이터 (단순화)
+-- 기존 데이터 삭제
+DELETE FROM server_shop;
+
+-- Item 1 - 150 KQTP, 10개 재고
 INSERT INTO server_shop (name, description, item_type, price, stock, image_url, rarity, summon_uses) VALUES
-('드래곤 소환권', '강력한 드래곤을 소환할 수 있는 티켓입니다.', 'summon_ticket', 100.00000000, 50, 'https://example.com/dragon.png', 'Legendary', 1),
-('피닉스 소환권', '불사조 피닉스를 소환할 수 있는 티켓입니다.', 'summon_ticket', 80.00000000, 30, 'https://example.com/phoenix.png', 'Epic', 1),
-('고블린 소환권', '고블린 무리를 소환할 수 있는 티켓입니다.', 'summon_ticket', 10.00000000, 100, 'https://example.com/goblin.png', 'Common', 3),
-('엘프 궁수 소환권', '정예 엘프 궁수를 소환할 수 있는 티켓입니다.', 'summon_ticket', 50.00000000, 60, 'https://example.com/elf.png', 'Rare', 1),
-('언데드 군단 소환권', '언데드 군단을 소환할 수 있는 티켓입니다.', 'summon_ticket', 120.00000000, 20, 'https://example.com/undead.png', 'Legendary', 1);
+('Item 1', 'Simple test item for marketplace', 'summon_ticket', 150.00000000, 10, 'https://via.placeholder.com/200', 'Common', 1);
 
 -- ============================================================
 -- 4. 뷰 생성 (선택사항)
