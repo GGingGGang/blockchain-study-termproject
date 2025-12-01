@@ -218,16 +218,29 @@ async function purchaseShopItem(item) {
         // 2단계: EIP-712 서명 요청
         Utils.showNotification('MetaMask에서 서명을 확인해주세요...', 'info');
         
+        // EIP-712 타입 데이터 구성 (EIP712Domain 추가)
+        const typedData = {
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                    { name: 'verifyingContract', type: 'address' }
+                ],
+                ...prepareData.types
+            },
+            primaryType: prepareData.primaryType,
+            domain: prepareData.domain,
+            message: prepareData.request
+        };
+        
+        console.log('전체 typedData:', JSON.stringify(typedData, null, 2));
+        
         const signature = await ethereum.request({
             method: 'eth_signTypedData_v4',
             params: [
                 currentAddress,
-                JSON.stringify({
-                    domain: prepareData.domain,
-                    types: prepareData.types,
-                    primaryType: prepareData.primaryType,
-                    message: prepareData.request
-                })
+                JSON.stringify(typedData)
             ]
         });
 
