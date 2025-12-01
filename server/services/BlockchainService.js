@@ -382,11 +382,26 @@ class BlockchainService {
       console.log(`   From: ${request.from}`);
       console.log(`   To: ${request.to}`);
       console.log(`   Nonce: ${request.nonce}`);
+      console.log(`   Signature: ${signature}`);
+      
+      // ForwardRequest 구조체를 Solidity가 기대하는 형식으로 변환
+      const formattedRequest = {
+        from: request.from,
+        to: request.to,
+        value: request.value.toString(),
+        gas: request.gas.toString(),
+        nonce: request.nonce.toString(),
+        data: request.data
+      };
+      
+      console.log(`   Formatted Request:`, formattedRequest);
       
       // 서명 검증
       const isValid = await this.minimalForwarderContract.methods
-        .verify(request, signature)
+        .verify(formattedRequest, signature)
         .call();
+      
+      console.log(`   서명 검증 결과: ${isValid}`);
       
       if (!isValid) {
         throw new Error('Invalid signature for meta-transaction');
@@ -394,8 +409,8 @@ class BlockchainService {
       
       console.log(`✅ 서명 검증 완료`);
       
-      // 메타 트랜잭션 실행
-      const tx = this.minimalForwarderContract.methods.execute(request, signature);
+      // 메타 트랜잭션 실행 (formatted request 사용)
+      const tx = this.minimalForwarderContract.methods.execute(formattedRequest, signature);
       
       const gas = await tx.estimateGas({ from: this.adminAccount.address });
       const gasPrice = await this.estimateGasPrice();
