@@ -3,11 +3,11 @@ pipeline {
     
     environment {
         NODE_VERSION = '18'
-        DEPLOY_SERVER = 'bridge'  // OCI 우분투 서버 IP (예: 132.145.xxx.xxx)
-        DEPLOY_USER = 'ubuntu'  // OCI 기본 사용자
-        DEPLOY_PATH = '~/blockchain-game'
+        DEPLOY_SERVER = 'bridge'  // Bridge 서버 (VMware 온프레미스)
+        DEPLOY_USER = 'your-user'  // Bridge 서버 사용자 (실제 사용자명으로 변경!)
+        DEPLOY_PATH = '/opt/blockchain-game'
         PM2_APP_NAME = 'blockchain-bridge'
-        DB_HOST = 'db'  // VMware MariaDB 서버 호스트명 또는 IP
+        DB_HOST = 'db'  // MariaDB 서버
     }
     
     stages {
@@ -53,11 +53,10 @@ pipeline {
             steps {
                 echo '🔨 빌드 준비...'
                 sh '''
-                    # 배포용 파일만 복사
+                    # 배포용 파일만 복사 (server + marketplace만)
                     mkdir -p dist
                     cp -r server dist/
                     cp -r marketplace dist/
-                    cp -r database dist/
                     cp package*.json dist/
                     cp .env.example dist/
                 '''
