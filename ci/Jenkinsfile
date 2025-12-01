@@ -68,13 +68,34 @@ pipeline {
             steps {
                 echo '🚀 서버 배포 중...'
                 sshagent(['deploy-ssh-key']) {
+                    script {
+                        // .env 파일 처리 (Credentials 사용 시도, 없으면 기존 파일 유지)
+                        try {
+                            withCredentials([file(credentialsId: 'bridge-env-file', variable: 'ENV_FILE')]) {
+                                sh '''
+                                    echo "📝 Jenkins Credentials에서 .env 파일 전송..."
+                                    # 배포 디렉토리 생성
+                                    ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+                                    
+                                    # .env 파일 전송
+                                    scp ${ENV_FILE} ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/.env
+                                    echo "✅ .env 파일 전송 완료"
+                                '''
+                            }
+                        } catch (Exception e) {
+                            echo "⚠️  Jenkins Credentials 'bridge-env-file'을 찾을 수 없습니다."
+                            echo "⚠️  Bridge 서버의 기존 .env 파일을 사용합니다."
+                            sh '''
+                                # 배포 디렉토리 생성
+                                ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+                                
+                                # 기존 .env 파일 백업
+                                ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "[ -f ${DEPLOY_PATH}/.env ] && cp ${DEPLOY_PATH}/.env ${DEPLOY_PATH}/.env.backup || true"
+                            '''
+                        }
+                    }
+                    
                     sh '''
-                        # 배포 디렉토리 생성
-                        ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
-                        
-                        # 기존 .env 파일 백업 (있을 경우)
-                        ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "[ -f ${DEPLOY_PATH}/.env ] && cp ${DEPLOY_PATH}/.env ${DEPLOY_PATH}/.env.backup || true"
-                        
                         # 파일 전송 (.env 제외)
                         rsync -avz --delete \
                             --exclude 'node_modules' \
