@@ -86,35 +86,18 @@ pipeline {
             steps {
                 echo '🚀 서버 배포 중...'
                 sshagent(['deploy-ssh-key']) {
-                    script {
-                        // .env 파일 처리 (Credentials 사용 시도, 없으면 기존 파일 유지)
-                        try {
-                            withCredentials([file(credentialsId: 'bridge-env-file', variable: 'ENV_FILE')]) {
-                                sh '''
-                                    echo "📝 Jenkins Credentials에서 .env 파일 전송..."
-                                    # 배포 디렉토리 생성
-                                    ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
-                                    
-                                    # .env 파일 전송
-                                    scp ${ENV_FILE} ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/.env
-                                    echo "✅ .env 파일 전송 완료"
-                                '''
-                            }
-                        } catch (Exception e) {
-                            echo "⚠️  Jenkins Credentials 'bridge-env-file'을 찾을 수 없습니다."
-                            echo "⚠️  Bridge 서버의 기존 .env 파일을 사용합니다."
-                            sh '''
-                                # 배포 디렉토리 생성
-                                ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
-                                
-                                # 기존 .env 파일 백업
-                                ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "[ -f ${DEPLOY_PATH}/.env ] && cp ${DEPLOY_PATH}/.env ${DEPLOY_PATH}/.env.backup || true"
-                            '''
-                        }
+                    // 1) .env 먼저 전송
+                    withCredentials([file(credentialsId: 'bridge-env-file', variable: 'ENV_FILE')]) {
+                        sh '''
+                            echo "📝 .env 파일 전송..."
+                            ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+                            scp "$ENV_FILE" ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/.env
+                        '''
                     }
                     
+                    // 2) 앱 파일 rsync
                     sh '''
-                        # 파일 전송 (.env 제외)
+                        echo "📦 dist 파일 rsync..."
                         rsync -avz --delete \
                             --exclude 'node_modules' \
                             --exclude '.git' \
@@ -123,30 +106,26 @@ pipeline {
                             --exclude 'scripts' \
                             --exclude '.env' \
                             dist/ ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/
-                        
-                        # 서버에서 의존성 설치 및 재시작
+                    '''
+                    
+                    // 3) 원격 서버에서 npm/pm2 실행
+                    sh '''
+                        echo "🛠 원격 서버 설정..."
                         ssh ${DEPLOY_USER}@${DEPLOY_SERVER} << 'ENDSSH'
                             cd ${DEPLOY_PATH}
                             
-                            # .env 파일 확인 및 자동 생성
+                            echo "현재 디렉토리:"
+                            pwd
+                            
+                            echo "파일 목록:"
+                            ls -al
+                            
                             if [ ! -f .env ]; then
-                                if [ -f .env.backup ]; then
-                                    echo "📝 백업된 .env 파일 복원..."
-                                    cp .env.backup .env
-                                elif [ -f .env.example ]; then
-                                    echo "⚠️  .env 파일이 없습니다. .env.example을 복사합니다."
-                                    echo "⚠️  배포 후 실제 값으로 수정이 필요합니다!"
-                                    cp .env.example .env
-                                else
-                                    echo "❌ .env 파일이 없고 생성할 수 없습니다!"
-                                    exit 1
-                                fi
+                                echo "❌ .env 파일이 없습니다!"
+                                exit 1
                             fi
                             
-                            # 의존성 설치
                             npm ci --production
-                            
-                            # PM2로 재시작
                             pm2 restart ${PM2_APP_NAME} || pm2 start server/index.js --name ${PM2_APP_NAME}
                             pm2 save
                             
