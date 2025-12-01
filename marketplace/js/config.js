@@ -13,8 +13,8 @@ const CONFIG = {
     
     // 컨트랙트 주소
     CONTRACTS: {
-        gameToken: '0xb0d279Ed4eA4C1564b6b4d2D02CE16aEd64Bf8AA',
-        gameAssetNFT: '0x3Db5276c83a7494E0177c525Ccf9781741A1dD67'
+        gameToken: '0x7032C50EcD4ceE0d5127Ac3aF55e6200b5efC802',
+        gameAssetNFT: '0x792CD029D3E6BF7312e7E5f5C84B83eAee9B0328'
     },
     
     // 컨트랙트 ABI (간소화 버전)
