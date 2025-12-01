@@ -7,6 +7,7 @@ class MetaMaskConnector {
         this.signer = null;
         this.address = null;
         this.isConnected = false;
+        this.isConnecting = false; // 중복 요청 방지 플래그
         
         console.log('MetaMaskConnector 초기화');
         console.log('window.ethereum 존재:', typeof window.ethereum !== 'undefined');
@@ -27,6 +28,20 @@ class MetaMaskConnector {
      */
     async connect() {
         try {
+            // 중복 요청 방지
+            if (this.isConnecting) {
+                console.warn('이미 연결 중입니다. 잠시 기다려주세요.');
+                throw new Error('이미 연결 요청이 진행 중입니다. 잠시 후 다시 시도해주세요.');
+            }
+            
+            // 이미 연결되어 있으면 주소 반환
+            if (this.isConnected && this.address) {
+                console.log('이미 연결됨:', this.address);
+                return this.address;
+            }
+            
+            this.isConnecting = true;
+            
             if (!this.isMetaMaskInstalled()) {
                 throw new Error('MetaMask가 설치되어 있지 않습니다. https://metamask.io 에서 설치해주세요.');
             }
@@ -59,7 +74,10 @@ class MetaMaskConnector {
             return this.address;
         } catch (error) {
             console.error('MetaMask 연결 실패:', error);
+            this.isConnected = false;
             throw error;
+        } finally {
+            this.isConnecting = false;
         }
     }
 
