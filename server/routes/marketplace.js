@@ -42,7 +42,7 @@ router.post('/auth/request-message', async (req, res) => {
     const expiresAt = new Date(timestamp + 5 * 60 * 1000); // 5분 유효
 
     // EIP-4361 표준 메시지 생성
-    const domain = process.env.DOMAIN || 'localhost:3000';
+    const domain = process.env.DOMAIN || 'bridge:3000';
     const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 

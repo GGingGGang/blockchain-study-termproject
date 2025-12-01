@@ -3,8 +3,8 @@
  */
 
 require('dotenv').config();
-const BlockchainService = require('./server/services/BlockchainService');
-const IPFSManager = require('./server/services/IPFSManager');
+const BlockchainService = require('../server/services/BlockchainService');
+const IPFSManager = require('../server/services/IPFSManager');
 
 async function testBlockchain() {
   console.log('============================================================');

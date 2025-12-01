@@ -68,43 +68,40 @@ pipeline {
             steps {
                 echo '🚀 서버 배포 중...'
                 sshagent(['deploy-ssh-key']) {
-                    // .env 파일을 Jenkins Credentials에서 가져와서 전송
-                    withCredentials([file(credentialsId: 'bridge-env-file', variable: 'ENV_FILE')]) {
-                        sh '''
-                            # 배포 디렉토리 생성
-                            ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
-                            
-                            # 파일 전송
-                            rsync -avz --delete \
-                                --exclude 'node_modules' \
-                                --exclude '.git' \
-                                --exclude 'test' \
-                                --exclude 'contracts' \
-                                --exclude 'scripts' \
-                                dist/ ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                            echo "=============test line 1============" 
-                            ls -al
-                            echo "=============test line 1============" 
-
-                            # .env 파일 전송
-                            scp ${ENV_FILE} ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/.env
-                        '''
-                    }
-                    
                     sh '''
+                        # 배포 디렉토리 생성
+                        ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+                        
+                        # 기존 .env 파일 백업 (있을 경우)
+                        ssh ${DEPLOY_USER}@${DEPLOY_SERVER} "[ -f ${DEPLOY_PATH}/.env ] && cp ${DEPLOY_PATH}/.env ${DEPLOY_PATH}/.env.backup || true"
+                        
+                        # 파일 전송 (.env 제외)
+                        rsync -avz --delete \
+                            --exclude 'node_modules' \
+                            --exclude '.git' \
+                            --exclude 'test' \
+                            --exclude 'contracts' \
+                            --exclude 'scripts' \
+                            --exclude '.env' \
+                            dist/ ${DEPLOY_USER}@${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                        
                         # 서버에서 의존성 설치 및 재시작
                         ssh ${DEPLOY_USER}@${DEPLOY_SERVER} << 'ENDSSH'
                             cd ${DEPLOY_PATH}
                             
-                            echo "=============test line 2============"
-                            ls -al 
-                            echo "=============test line 2============" 
-
-                            
-                            # .env 파일 확인
+                            # .env 파일 확인 및 자동 생성
                             if [ ! -f .env ]; then
-                                echo "❌ .env 파일 전송 실패!"
-                                exit 1
+                                if [ -f .env.backup ]; then
+                                    echo "📝 백업된 .env 파일 복원..."
+                                    cp .env.backup .env
+                                elif [ -f .env.example ]; then
+                                    echo "⚠️  .env 파일이 없습니다. .env.example을 복사합니다."
+                                    echo "⚠️  배포 후 실제 값으로 수정이 필요합니다!"
+                                    cp .env.example .env
+                                else
+                                    echo "❌ .env 파일이 없고 생성할 수 없습니다!"
+                                    exit 1
+                                fi
                             fi
                             
                             # 의존성 설치

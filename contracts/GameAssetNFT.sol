@@ -4,21 +4,28 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 
 /**
  * @title GameAssetNFT
- * @dev ERC-721 게임 자산 NFT 컨트랙트
+ * @dev ERC-721 게임 자산 NFT 컨트랙트 (EIP-2771 메타 트랜잭션 지원)
  * 게임 내 아이템을 NFT로 변환하여 블록체인에 기록합니다.
+ * 가스리스 트랜잭션을 지원하여 사용자는 서명만으로 NFT를 전송할 수 있습니다.
  */
-contract GameAssetNFT is ERC721, ERC721URIStorage, Ownable {
+contract GameAssetNFT is ERC721, ERC721URIStorage, Ownable, ERC2771Context {
     // 이벤트
     event NFTMinted(address indexed to, uint256 indexed tokenId, string tokenURI);
     event NFTBurned(uint256 indexed tokenId, address indexed owner);
     
     /**
      * @dev 컨트랙트 생성자
+     * @param trustedForwarder EIP-2771 Trusted Forwarder 컨트랙트 주소
      */
-    constructor() ERC721("GameAsset", "GASSET") Ownable(msg.sender) {}
+    constructor(address trustedForwarder) 
+        ERC721("GameAsset", "GASSET") 
+        Ownable(msg.sender) 
+        ERC2771Context(trustedForwarder) 
+    {}
     
     /**
      * @dev NFT 민팅 (관리자만 호출 가능)
@@ -83,5 +90,28 @@ contract GameAssetNFT is ERC721, ERC721URIStorage, Ownable {
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+    
+    /**
+     * @dev ERC2771Context와 Context의 _msgSender 충돌 해결
+     * 메타 트랜잭션을 통해 호출될 경우 실제 발신자 주소를 반환합니다.
+     */
+    function _msgSender() internal view override(Context, ERC2771Context) returns (address) {
+        return ERC2771Context._msgSender();
+    }
+    
+    /**
+     * @dev ERC2771Context와 Context의 _msgData 충돌 해결
+     * 메타 트랜잭션을 통해 호출될 경우 실제 calldata를 반환합니다.
+     */
+    function _msgData() internal view override(Context, ERC2771Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+    
+    /**
+     * @dev ERC2771Context와 Context의 _contextSuffixLength 충돌 해결
+     */
+    function _contextSuffixLength() internal view override(Context, ERC2771Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
     }
 }

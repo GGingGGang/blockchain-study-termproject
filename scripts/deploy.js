@@ -12,10 +12,21 @@ async function main() {
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   console.log("💰 배포자 잔액:", hre.ethers.formatEther(balance), "ETH\n");
 
-  // 1. GameToken (ERC-20) 배포
+  // 1. MinimalForwarder (EIP-2771) 배포
+  console.log("📦 MinimalForwarder 컨트랙트 배포 중...");
+  const MinimalForwarder = await hre.ethers.getContractFactory("MinimalForwarder");
+  const minimalForwarder = await MinimalForwarder.deploy();
+  await minimalForwarder.waitForDeployment();
+  const minimalForwarderAddress = await minimalForwarder.getAddress();
+  
+  console.log("✅ MinimalForwarder 배포 완료!");
+  console.log("   주소:", minimalForwarderAddress);
+  console.log("   설명: EIP-2771 메타 트랜잭션 지원 (가스리스 트랜잭션)\n");
+
+  // 2. GameToken (ERC-20) 배포
   console.log("📦 GameToken 컨트랙트 배포 중...");
   const GameToken = await hre.ethers.getContractFactory("GameToken");
-  const gameToken = await GameToken.deploy();
+  const gameToken = await GameToken.deploy(minimalForwarderAddress);
   await gameToken.waitForDeployment();
   const gameTokenAddress = await gameToken.getAddress();
   
@@ -23,12 +34,13 @@ async function main() {
   console.log("   주소:", gameTokenAddress);
   console.log("   이름:", await gameToken.name());
   console.log("   심볼:", await gameToken.symbol());
-  console.log("   초기 공급량:", hre.ethers.formatEther(await gameToken.totalSupply()), "KQTP\n");
+  console.log("   초기 공급량:", hre.ethers.formatEther(await gameToken.totalSupply()), "KQTP");
+  console.log("   메타 트랜잭션: 지원 ✓\n");
 
-  // 2. GameAssetNFT (ERC-721) 배포
+  // 3. GameAssetNFT (ERC-721) 배포
   console.log("📦 GameAssetNFT 컨트랙트 배포 중...");
   const GameAssetNFT = await hre.ethers.getContractFactory("GameAssetNFT");
-  const gameAssetNFT = await GameAssetNFT.deploy();
+  const gameAssetNFT = await GameAssetNFT.deploy(minimalForwarderAddress);
   await gameAssetNFT.waitForDeployment();
   const gameAssetNFTAddress = await gameAssetNFT.getAddress();
   
@@ -36,7 +48,7 @@ async function main() {
   console.log("   주소:", gameAssetNFTAddress);
   console.log("   이름:", await gameAssetNFT.name());
   console.log("   심볼:", await gameAssetNFT.symbol());
-  console.log();
+  console.log("   메타 트랜잭션: 지원 ✓\n");
 
   // 배포 정보 저장
   const deploymentInfo = {
@@ -45,16 +57,22 @@ async function main() {
     deployer: deployer.address,
     timestamp: new Date().toISOString(),
     contracts: {
+      MinimalForwarder: {
+        address: minimalForwarderAddress,
+        description: "EIP-2771 Trusted Forwarder for gasless transactions"
+      },
       GameToken: {
         address: gameTokenAddress,
         name: await gameToken.name(),
         symbol: await gameToken.symbol(),
-        totalSupply: hre.ethers.formatEther(await gameToken.totalSupply())
+        totalSupply: hre.ethers.formatEther(await gameToken.totalSupply()),
+        metaTxSupport: true
       },
       GameAssetNFT: {
         address: gameAssetNFTAddress,
         name: await gameAssetNFT.name(),
-        symbol: await gameAssetNFT.symbol()
+        symbol: await gameAssetNFT.symbol(),
+        metaTxSupport: true
       }
     }
   };
@@ -83,15 +101,22 @@ async function main() {
   console.log("🎉 배포 완료!");
   console.log("=".repeat(60));
   console.log("\n📋 배포된 컨트랙트 주소:");
+  console.log("   MinimalForwarder (EIP-2771):", minimalForwarderAddress);
   console.log("   GameToken (ERC-20):", gameTokenAddress);
   console.log("   GameAssetNFT (ERC-721):", gameAssetNFTAddress);
   console.log();
   console.log("💡 다음 단계:");
-  console.log("   1. .env 파일에 컨트랙트 주소 추가");
+  console.log("   1. .env 파일에 다음 주소들을 추가하세요:");
+  console.log(`      MINIMAL_FORWARDER_ADDRESS=${minimalForwarderAddress}`);
+  console.log(`      GAME_TOKEN_ADDRESS=${gameTokenAddress}`);
+  console.log(`      GAME_ASSET_NFT_ADDRESS=${gameAssetNFTAddress}`);
+  console.log();
   console.log("   2. 브릿지 서버 설정 파일 업데이트");
+  console.log();
   console.log("   3. 컨트랙트 검증 (선택사항):");
-  console.log(`      npx hardhat verify --network ${hre.network.name} ${gameTokenAddress}`);
-  console.log(`      npx hardhat verify --network ${hre.network.name} ${gameAssetNFTAddress}`);
+  console.log(`      npx hardhat verify --network ${hre.network.name} ${minimalForwarderAddress}`);
+  console.log(`      npx hardhat verify --network ${hre.network.name} ${gameTokenAddress} ${minimalForwarderAddress}`);
+  console.log(`      npx hardhat verify --network ${hre.network.name} ${gameAssetNFTAddress} ${minimalForwarderAddress}`);
   console.log();
 }
 

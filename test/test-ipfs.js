@@ -3,8 +3,8 @@
  */
 
 require('dotenv').config();
-const IPFSManager = require('./server/services/IPFSManager');
-const { createGameItemMetadata, createSummonTicketMetadata } = require('./server/utils/metadataHelper');
+const IPFSManager = require('../server/services/IPFSManager');
+const { createGameItemMetadata, createSummonTicketMetadata } = require('../server/utils/metadataHelper');
 
 async function testIPFS() {
   console.log('============================================================');

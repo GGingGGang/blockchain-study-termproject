@@ -5,7 +5,7 @@
 const axios = require('axios');
 const { ethers } = require('ethers');
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://bridge:3000';
 const TEST_WALLET = '0xa5ab6C8C0560d51Db844182e286a380916Eb1487';
 const PRIVATE_KEY = '2c91b315b64cea81b83fb7376ee145b151041c8b5928d4cb4fa6ff24d01bdac6';
 

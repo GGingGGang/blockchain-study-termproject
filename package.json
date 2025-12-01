@@ -13,7 +13,19 @@
     "server:dev": "nodemon server/index.js",
     "test:ipfs": "node test-ipfs.js",
     "test:blockchain": "node test-blockchain.js",
-    "test:api": "node test-api.js"
+    "test:api": "node test-api.js",
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js",
+    "lint": "eslint server/**/*.js || echo 'ESLint not configured'",
+    "deploy": "bash deploy.sh production",
+    "docker:build": "docker build -t blockchain-bridge .",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f bridge-server",
+    "pm2:start": "pm2 start ecosystem.config.js --env production",
+    "pm2:stop": "pm2 stop blockchain-bridge",
+    "pm2:restart": "pm2 restart blockchain-bridge",
+    "pm2:logs": "pm2 logs blockchain-bridge"
   },
   "keywords": [
     "blockchain",

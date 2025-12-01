@@ -37,12 +37,21 @@ app.use(express.static(path.join(__dirname, '../marketplace')));
 // 라우트 설정
 // ============================================================
 
-// 헬스 체크
+// 헬스 체크 (CI/CD용)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -84,8 +93,8 @@ app.listen(PORT, () => {
   console.log('============================================================');
   console.log(`📡 포트: ${PORT}`);
   console.log(`🌍 환경: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 API URL: http://localhost:${PORT}`);
-  console.log(`🌐 웹 마켓플레이스: http://localhost:${PORT}/index.html`);
+  console.log(`🔗 API URL: http://bridge:${PORT}`);
+  console.log(`🌐 웹 마켓플레이스: http://bridge:${PORT}/index.html`);
   console.log('============================================================');
   
   // 데이터베이스 연결 테스트

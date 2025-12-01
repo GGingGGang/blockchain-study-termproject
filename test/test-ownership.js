@@ -3,8 +3,8 @@
  */
 
 require('dotenv').config();
-const BlockchainService = require('./server/services/BlockchainService');
-const db = require('./server/config/database');
+const BlockchainService = require('../server/services/BlockchainService');
+const db = require('../server/config/database');
 
 async function testOwnership() {
   let actualOwner = null;

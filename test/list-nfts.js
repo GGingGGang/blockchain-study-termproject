@@ -3,7 +3,7 @@
  */
 
 require('dotenv').config();
-const db = require('./server/config/database');
+const db = require('../server/config/database');
 
 async function listNFTs() {
   try {

@@ -4,7 +4,7 @@
 
 const fetch = require('node-fetch');
 
-const API_URL = 'http://localhost:3000';
+const API_URL = 'http://bridge:3000';
 
 async function testShopAPI() {
   console.log('🧪 서버 상점 API 테스트 시작\n');

@@ -1,0 +1,34 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.local
+README.md
+test
+tests
+*.test.js
+*.spec.js
+coverage
+.vscode
+.idea
+*.log
+logs
+.DS_Store
+Thumbs.db
+
+# 블록체인 관련 (서버에 불필요)
+contracts
+scripts
+artifacts
+cache
+deployments
+hardhat.config.js
+.openzeppelin
+
+# CI/CD 파일
+Jenkinsfile
+.github
+.gitlab-ci.yml
+docker-compose.yml
+Dockerfile

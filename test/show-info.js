@@ -6,7 +6,7 @@
  */
 
 require('dotenv').config();
-const db = require('./server/config/database');
+const db = require('../server/config/database');
 
 async function showInfo() {
   try {
@@ -111,7 +111,7 @@ async function showInfo() {
     // 5. 유용한 링크
     console.log('\n\n🔗 유용한 링크');
     console.log('-'.repeat(80));
-    console.log(`마켓플레이스:     http://localhost:${process.env.PORT || 3000}`);
+    console.log(`마켓플레이스:     http://bridge:${process.env.PORT || 3000}`);
     console.log(`Sepolia Faucet:   https://sepoliafaucet.com`);
     console.log(`Sepolia Explorer: https://sepolia.etherscan.io`);
     console.log(`OpenSea Testnet:  https://testnets.opensea.io`);

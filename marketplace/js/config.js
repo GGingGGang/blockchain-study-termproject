@@ -1,7 +1,7 @@
 // API 및 블록체인 설정
 const CONFIG = {
     // 브릿지 서버 API URL
-    API_BASE_URL: 'http://localhost:3000',
+    API_BASE_URL: 'http://bridge:3000',
     
     // 블록체인 설정
     NETWORK: {

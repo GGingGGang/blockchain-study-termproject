@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Node.js Bridge 서버
+  bridge-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blockchain-bridge
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db
+    networks:
+      - blockchain-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MariaDB 데이터베이스
+  db:
+    image: mariadb:10.11
+    container_name: blockchain-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${DB_NAME:-blockchain_game}
+      MYSQL_USER: ${DB_USER:-bridge_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-bridge_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/02-schema.sql
+    networks:
+      - blockchain-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nginx (웹 마켓플레이스 + 리버스 프록시)
+  nginx:
+    image: nginx:alpine
+    container_name: blockchain-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./marketplace:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - bridge-server
+    networks:
+      - blockchain-network
+
+volumes:
+  db-data:
+    driver: local
+
+networks:
+  blockchain-network:
+    driver: bridge
