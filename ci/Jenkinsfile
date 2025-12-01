@@ -3,8 +3,8 @@ pipeline {
     
     environment {
         NODE_VERSION = '18'
-        DEPLOY_SERVER = 'bridge'  // Bridge 서버 (VMware 온프레미스)
-        DEPLOY_USER = 'your-user'  // Bridge 서버 사용자 (실제 사용자명으로 변경!)
+        DEPLOY_SERVER = 'bridge'  // Bridge 서버 (VMware Rocky9)
+        DEPLOY_USER = 'root'  // Bridge 서버 사용자
         DEPLOY_PATH = '/opt/blockchain-game'
         PM2_APP_NAME = 'blockchain-bridge'
         DB_HOST = 'db'  // MariaDB 서버
