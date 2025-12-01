@@ -140,11 +140,16 @@ class GameService {
         const metadataCID = await this.ipfsManager.uploadJSON(metadata);
         console.log(`📦 메타데이터 업로드 완료: ${metadataCID}`);
         
-        // 3. NFT 민팅
-        const mintResult = await this.blockchainService.mintNFT(address, metadataCID);
+        // 3. Token ID 생성
+        const tokenId = await this.blockchainService.generateTokenId();
+        console.log(`🔢 Token ID 생성: ${tokenId}`);
+        
+        // 4. NFT 민팅
+        const tokenURI = `ipfs://${metadataCID}`;
+        const mintResult = await this.blockchainService.mintNFT(address, tokenId, tokenURI);
         console.log(`✅ NFT 민팅 완료: Token #${mintResult.tokenId}`);
         
-        // 4. drop_items 테이블에 기록
+        // 5. drop_items 테이블에 기록
         await db.query(
           `INSERT INTO drop_items 
           (user_address, monster_type, monster_level, item_name, item_grade, status, minted_token_id)
