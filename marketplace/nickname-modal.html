@@ -1,0 +1,59 @@
+<!-- 닉네임 설정 모달 (다른 HTML 파일에 추가) -->
+<div id="nicknameModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>닉네임 설정</h3>
+            <button class="close-btn" onclick="ui.closeModal('nicknameModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="nicknameInput">닉네임</label>
+                <input 
+                    type="text" 
+                    id="nicknameInput" 
+                    placeholder="2-20자 (한글, 영문, 숫자, _)" 
+                    maxlength="20"
+                    class="form-control"
+                >
+                <small class="form-text">현재 닉네임: <span id="currentNickname">없음</span></small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="cancelNickname" class="btn btn-secondary">취소</button>
+            <button id="saveNickname" class="btn btn-primary">저장</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.25rem;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+</style>

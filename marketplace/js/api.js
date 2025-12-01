@@ -190,6 +190,25 @@ class MarketplaceAPI {
         return await this.request(endpoint);
     }
 
+    // ===== 사용자 프로필 API =====
+
+    /**
+     * 사용자 프로필 조회
+     */
+    async getUserProfile(address) {
+        return await this.request(`/api/marketplace/user/${address}`);
+    }
+
+    /**
+     * 닉네임 설정
+     */
+    async setNickname(nickname) {
+        return await this.request('/api/marketplace/user/nickname', {
+            method: 'POST',
+            body: JSON.stringify({ nickname })
+        });
+    }
+
     // ===== 통계 API (추가) =====
 
     /**

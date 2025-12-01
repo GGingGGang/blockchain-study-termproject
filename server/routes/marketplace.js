@@ -129,6 +129,129 @@ router.post('/meta-tx/prepare', authenticateToken, async (req, res) => {
 });
 
 // ============================================================
+// 사용자 프로필 API
+// ============================================================
+
+/**
+ * GET /api/marketplace/user/:address
+ * 사용자 프로필 조회
+ */
+router.get('/user/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+
+    const user = await db.queryOne(
+      'SELECT wallet_address, nickname, created_at FROM users WHERE wallet_address = ?',
+      [address.toLowerCase()]
+    );
+
+    if (!user) {
+      return res.json({
+        success: true,
+        user: null
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        address: user.wallet_address,
+        nickname: user.nickname,
+        createdAt: user.created_at
+      }
+    });
+
+  } catch (error) {
+    console.error('사용자 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user profile'
+    });
+  }
+});
+
+/**
+ * POST /api/marketplace/user/nickname
+ * 닉네임 설정/변경
+ */
+router.post('/user/nickname', authenticateToken, async (req, res) => {
+  try {
+    const { nickname } = req.body;
+
+    if (!nickname) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nickname is required'
+      });
+    }
+
+    // 닉네임 유효성 검사
+    if (nickname.length < 2 || nickname.length > 20) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nickname must be between 2 and 20 characters'
+      });
+    }
+
+    // 특수문자 제한 (한글, 영문, 숫자, 언더스코어만 허용)
+    const nicknameRegex = /^[가-힣a-zA-Z0-9_]+$/;
+    if (!nicknameRegex.test(nickname)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nickname can only contain Korean, English, numbers, and underscores'
+      });
+    }
+
+    // 닉네임 중복 확인
+    const existing = await db.queryOne(
+      'SELECT wallet_address FROM users WHERE nickname = ? AND wallet_address != ?',
+      [nickname, req.user.address]
+    );
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nickname already taken'
+      });
+    }
+
+    // 사용자 존재 확인
+    const user = await db.queryOne(
+      'SELECT * FROM users WHERE wallet_address = ?',
+      [req.user.address]
+    );
+
+    if (user) {
+      // 닉네임 업데이트
+      await db.query(
+        'UPDATE users SET nickname = ? WHERE wallet_address = ?',
+        [nickname, req.user.address]
+      );
+    } else {
+      // 새 사용자 생성
+      await db.insert('users', {
+        wallet_address: req.user.address,
+        nickname: nickname
+      });
+    }
+
+    console.log(`✅ 닉네임 설정: ${req.user.address} → ${nickname}`);
+
+    res.json({
+      success: true,
+      nickname: nickname
+    });
+
+  } catch (error) {
+    console.error('닉네임 설정 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to set nickname'
+    });
+  }
+});
+
+// ============================================================
 // 인증 API (EIP-4361)
 // ============================================================
 
