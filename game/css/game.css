@@ -127,6 +127,7 @@ header button:disabled {
 
 #log {
     flex: 1;
+    min-height: 200px;
     background: #050505;
     border-radius: 4px;
     padding: 6px;
@@ -137,18 +138,27 @@ header button:disabled {
 }
 
 #inventory {
-    max-height: 40%;
+    flex: 1.5;
+    min-height: 300px;
     overflow-y: auto;
     border: 1px solid #27272a;
     border-radius: 4px;
-    padding: 6px;
-    font-size: 11px;
+    padding: 8px;
+    font-size: 12px;
     background: #020617;
 }
 
 .item-row {
-    padding: 2px 0;
+    padding: 6px 8px;
     border-bottom: 1px solid #111827;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    background: #0a0a0f;
+    transition: background 0.2s;
+}
+
+.item-row:hover {
+    background: #1a1a2e;
 }
 
 .item-row:last-child {
