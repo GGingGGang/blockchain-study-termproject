@@ -459,16 +459,35 @@ router.get('/nfts/:address', authenticateToken, async (req, res) => {
       [address.toLowerCase()]
     );
 
-    // 메타데이터 URL 추가
-    const nftsWithMetadata = nfts.map(nft => ({
-      tokenId: nft.token_id,
-      ownerAddress: nft.owner_address,
-      ipfsCID: nft.ipfs_cid,
-      createdAt: nft.created_at,
-      isListed: !!nft.listing_id,
-      listingId: nft.listing_id,
-      listingPrice: nft.listing_price,
-      metadataURL: `https://gateway.pinata.cloud/ipfs/${nft.ipfs_cid}`
+    // 메타데이터 가져오기
+    const IPFSManager = require('../services/IPFSManager');
+    const ipfsManager = new IPFSManager();
+    
+    const nftsWithMetadata = await Promise.all(nfts.map(async (nft) => {
+      let metadata = {};
+      
+      try {
+        if (nft.ipfs_cid) {
+          metadata = await ipfsManager.getMetadata(nft.ipfs_cid);
+        }
+      } catch (error) {
+        console.error(`메타데이터 로드 실패 (Token #${nft.token_id}):`, error.message);
+      }
+      
+      return {
+        tokenId: nft.token_id,
+        name: metadata.name || `NFT #${nft.token_id}`,
+        description: metadata.description || '',
+        image: metadata.image || '',
+        attributes: metadata.attributes || [],
+        ownerAddress: nft.owner_address,
+        ipfsCID: nft.ipfs_cid,
+        createdAt: nft.created_at,
+        isListed: !!nft.listing_id,
+        listingId: nft.listing_id,
+        price: nft.listing_price,
+        metadataURL: `https://gateway.pinata.cloud/ipfs/${nft.ipfs_cid}`
+      };
     }));
 
     res.json({
