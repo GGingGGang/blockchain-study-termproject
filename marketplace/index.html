@@ -113,6 +113,11 @@
     <script src="js/nickname.js"></script>
     <script src="js/index.js"></script>
     
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 20px; background: #1a1a1a; color: #888; font-size: 12px; border-top: 1px solid #333;">
+        <div id="deploymentInfo">Loading deployment info...</div>
+    </footer>
+
     <script>
         // KQTP 토큰 추가 버튼 이벤트
         document.addEventListener('DOMContentLoaded', () => {
@@ -120,6 +125,28 @@
             if (addTokenBtn) {
                 addTokenBtn.addEventListener('click', addKQTPToken);
             }
+            
+            // 배포 정보 로드
+            fetch('/deployment-info.json')
+                .then(res => res.json())
+                .then(data => {
+                    const deployedAt = new Date(data.deployedAt);
+                    const formatted = deployedAt.toLocaleString('ko-KR', { 
+                        timeZone: 'Asia/Seoul',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    document.getElementById('deploymentInfo').textContent = 
+                        `Deployed: ${formatted} (Build #${data.buildNumber})`;
+                })
+                .catch(() => {
+                    document.getElementById('deploymentInfo').textContent = 
+                        'Deployment info not available';
+                });
         });
     </script>
 </body>

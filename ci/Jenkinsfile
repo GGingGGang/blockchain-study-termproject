@@ -75,9 +75,13 @@ pipeline {
                     cp .env.example dist/
                     cp -r artifacts dist/
                     
+                    # 배포 시간 기록
+                    echo "{\\"deployedAt\\": \\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\", \\"buildNumber\\": \\"${BUILD_NUMBER}\\"}" > dist/deployment-info.json
+                    
                     echo "=== Dist Contents ==="
                     ls -la dist/
                     ls -la dist/artifacts/contracts/ || echo "⚠️  dist/artifacts/contracts 없음"
+                    cat dist/deployment-info.json
                 '''
             }
         }
