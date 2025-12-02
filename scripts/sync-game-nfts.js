@@ -107,8 +107,8 @@ async function syncAllNFTs() {
           }
           
           await db.query(
-            'INSERT INTO nft_records (token_id, owner_address, status, ipfs_cid, created_at) VALUES (?, ?, ?, ?, ?)',
-            [tokenId, owner.toLowerCase(), 'active', ipfsCID, new Date()]
+            'INSERT INTO nft_records (token_id, owner_address, status, ipfs_cid, mint_tx_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [tokenId, owner.toLowerCase(), 'active', ipfsCID || '', '', new Date()]
           );
           
           console.log(`Token ${tokenId}: DB에 추가 (소유자: ${owner})`);
